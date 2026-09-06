@@ -1,0 +1,63 @@
+cff-version: 1.2.0
+message: "If you use this code, cite the associated manuscript after its final bibliographic record is available."
+title: "Code for the Husab geology-informed neural-network spatial benchmark"
+type: software
+version: 0.2.0
+repository-code: "https://github.com/soeaxy/husab-ginn"
+url: "https://github.com/soeaxy/husab-ginn"
+authors:
+  - family-names: Li
+    given-names: Yuan
+  - family-names: Li
+    given-names: Dajun
+  - family-names: Song
+    given-names: Yingxu
+  - family-names: Dong
+    given-names: Wenming
+  - family-names: Huang
+    given-names: Yingcong
+  - family-names: Li
+    given-names: Guanglai
+  - family-names: Chen
+    given-names: Hui
+  - family-names: Zhang
+    given-names: Zhiyong
+  - family-names: Liu
+    given-names: Wenyu
+  - family-names: Yan
+    given-names: Chaolei
+  - family-names: Dong
+    given-names: Qian
+  - family-names: Liu
+    given-names: Bo
+preferred-citation:
+  type: article
+  title: "Geology-informed neural networks for uranium prospectivity mapping in the Rössing–Husab district, Namibia: a spatially blocked benchmark"
+  authors:
+    - family-names: Li
+      given-names: Yuan
+    - family-names: Li
+      given-names: Dajun
+    - family-names: Song
+      given-names: Yingxu
+    - family-names: Dong
+      given-names: Wenming
+    - family-names: Huang
+      given-names: Yingcong
+    - family-names: Li
+      given-names: Guanglai
+    - family-names: Chen
+      given-names: Hui
+    - family-names: Zhang
+      given-names: Zhiyong
+    - family-names: Liu
+      given-names: Wenyu
+    - family-names: Yan
+      given-names: Chaolei
+    - family-names: Dong
+      given-names: Qian
+    - family-names: Liu
+      given-names: Bo
+  journal: "Ore Geology Reviews"
+  year: 2026
+  notes: "Manuscript ORGEO-D-26-00764 under major revision; DOI not yet assigned."

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "purpose": "Runnable format example only; not the manuscript split or study area",
+  "split_mode": "spatial_block",
+  "coordinate_system": "Synthetic local Cartesian metres; no geographic CRS",
+  "grid_size": 5,
+  "bounds": {"min_x": 0.0, "min_y": 0.0, "max_x": 5000.0, "max_y": 5000.0},
+  "partitions": {
+    "train": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    "validation": [15, 16, 17, 18, 19],
+    "test": [20, 21, 22, 23, 24]
+  },
+  "release_note": "All bounds and block assignments in this example are synthetic. Obtain an authorized private manifest for exact study reproduction."
+}

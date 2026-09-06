@@ -1,0 +1,4419 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>铀成矿预测一体化平台</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap");
+
+    :root {
+      --bg-0: #020815;
+      --bg-1: #071a34;
+      --bg-2: #0b2a52;
+      --line: rgba(90, 208, 255, 0.25);
+      --line-strong: rgba(117, 225, 255, 0.68);
+      --text: #dff4ff;
+      --muted: #7bb2d6;
+      --accent: #4cd8ff;
+      --accent-2: #7effc8;
+      --warn: #ffc77a;
+      --ok: #72f4aa;
+      --err: #ff8e8e;
+      --panel: rgba(5, 21, 44, 0.72);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Rajdhani", "Microsoft YaHei UI", sans-serif;
+      background:
+        radial-gradient(1100px 700px at 8% 0%, rgba(76, 216, 255, 0.15), transparent 58%),
+        radial-gradient(1000px 640px at 92% 6%, rgba(126, 255, 200, 0.09), transparent 54%),
+        linear-gradient(160deg, var(--bg-0), var(--bg-1) 42%, var(--bg-2));
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(92, 201, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(92, 201, 255, 0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(circle at center, black 42%, transparent 100%);
+    }
+
+    .screen {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 14px 14px 18px;
+    }
+
+    .topbar {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(130deg, rgba(76, 216, 255, 0.12), rgba(3, 16, 36, 0.86));
+      box-shadow: 0 0 0 1px rgba(76, 216, 255, 0.08) inset, 0 20px 40px rgba(1, 7, 16, 0.45);
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand-center {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(10, 32, 61, 0.62);
+      white-space: nowrap;
+    }
+
+    .title {
+      text-align: left;
+      font-family: "Orbitron", sans-serif;
+      letter-spacing: 0.4px;
+      font-size: clamp(17px, 2vw, 28px);
+      color: #c5ecff;
+      text-shadow: 0 0 22px rgba(76, 216, 255, 0.35);
+    }
+
+    .subtitle {
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+      margin-top: 4px;
+    }
+
+    .kpi-grid {
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+      min-height: 84px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% 0 -20%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .kpi-value {
+      margin-top: 6px;
+      font-family: "Orbitron", sans-serif;
+      font-size: 22px;
+      color: #d9f5ff;
+    }
+
+    .kpi-note {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #8ad1f2;
+    }
+
+    .tabs-header {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: "Orbitron", sans-serif;
+      font-size: 14px;
+      padding: 10px 24px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      height: 40px;
+    }
+
+    .tab-btn.active {
+      color: #7effc8;
+      border-bottom-color: #7effc8;
+      text-shadow: 0 0 10px rgba(126, 255, 200, 0.4);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: var(--text);
+      border-bottom-color: rgba(76, 216, 255, 0.5);
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 14px;
+      animation: panel-enter 0.4s ease both;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .tab-grid-task,
+    .tab-grid-viz,
+    .tab-grid-metrics,
+    .tab-grid-compare {
+      display: grid;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .tab-grid-task {
+      grid-template-columns: minmax(320px, 460px) minmax(360px, 1fr);
+    }
+
+    .tab-grid-viz {
+      grid-template-columns: 1fr;
+    }
+
+    .tab-grid-metrics {
+      grid-template-columns: 1fr;
+    }
+
+    .tab-grid-compare {
+      grid-template-columns: 1fr;
+    }
+
+    .span-full {
+      grid-column: 1 / -1;
+    }
+
+    .viz-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      align-items: stretch;
+    }
+
+    @media (max-width: 1000px) {
+
+      .tab-grid-task,
+      .tab-grid-viz,
+      .tab-grid-metrics,
+      .tab-grid-compare,
+      .viz-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .title,
+      .subtitle {
+        text-align: left;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+
+      .brand-center {
+        align-items: flex-start;
+      }
+
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: 0 14px 30px rgba(2, 7, 17, 0.42);
+      padding: 12px;
+      animation: panel-enter 0.45s ease both;
+    }
+
+    @keyframes panel-enter {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-family: "Orbitron", sans-serif;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #97e5ff;
+    }
+
+    .row {
+      margin-bottom: 8px;
+    }
+
+    .row2 {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 560px) {
+      .row2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid rgba(76, 216, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(4, 18, 36, 0.86);
+      color: var(--text);
+      padding: 9px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    input[type="file"] {
+      padding: 7px;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 2px rgba(76, 216, 255, 0.17);
+    }
+
+    details {
+      border: 1px dashed rgba(76, 216, 255, 0.32);
+      border-radius: 10px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--warn);
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 9px 13px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: #052035;
+      background: linear-gradient(120deg, #5bdfff, #90ffcb);
+    }
+
+    .btn.alt {
+      color: var(--text);
+      background: transparent;
+      border-color: rgba(76, 216, 255, 0.44);
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(8, 31, 57, 0.76);
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #c1edff;
+    }
+
+    .status-running {
+      color: #ffe29a;
+    }
+
+    .status-done {
+      color: var(--ok);
+    }
+
+    .status-failed {
+      color: var(--err);
+    }
+
+    .logs,
+    .list-box {
+      border: 1px solid rgba(76, 216, 255, 0.22);
+      border-radius: 10px;
+      background: rgba(4, 14, 29, 0.86);
+      padding: 8px;
+      overflow: auto;
+    }
+
+    .logs {
+      height: calc(100vh - 400px);
+      min-height: 300px;
+      white-space: pre-wrap;
+      font-family: "Consolas", "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .list-box {
+      min-height: 200px;
+      height: calc(100vh - 660px);
+    }
+
+    .artifact-link {
+      display: block;
+      text-decoration: none;
+      color: #9ce6ff;
+      border-bottom: 1px dashed rgba(76, 216, 255, 0.2);
+      padding: 4px 0;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .job-item {
+      border: 1px solid rgba(76, 216, 255, 0.2);
+      border-radius: 8px;
+      padding: 7px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      background: rgba(7, 23, 45, 0.7);
+      font-size: 12px;
+    }
+
+    .job-item:hover {
+      border-color: rgba(117, 225, 255, 0.7);
+      background: rgba(10, 34, 64, 0.84);
+    }
+
+    .job-item.active {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 1px rgba(117, 225, 255, 0.2) inset;
+    }
+
+    .job-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .job-id {
+      font-family: "Orbitron", sans-serif;
+      letter-spacing: 0.3px;
+      color: #c1edff;
+      font-size: 12px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .job-status-badge {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      border: 1px solid rgba(117, 225, 255, 0.3);
+      color: #a6e9ff;
+      background: rgba(7, 29, 54, 0.8);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .job-status-badge.status-running {
+      color: #ffe29a;
+      border-color: rgba(255, 226, 154, 0.45);
+    }
+
+    .job-status-badge.status-done {
+      color: #72f4aa;
+      border-color: rgba(114, 244, 170, 0.45);
+    }
+
+    .job-status-badge.status-failed {
+      color: #ff8e8e;
+      border-color: rgba(255, 142, 142, 0.45);
+    }
+
+    .job-meta {
+      color: var(--muted);
+    }
+
+    .map-layer-control {
+      width: min(320px, 62vw);
+      background: #e4e4e4;
+      border: 1px solid #9bb8e6;
+      border-radius: 7px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(2, 7, 17, 0.35);
+    }
+
+    .leaflet-top.leaflet-right .map-layer-control,
+    .leaflet-top.leaflet-right .map-basemap-control {
+      float: left;
+      clear: none;
+      margin-left: 8px;
+      margin-right: 0;
+    }
+
+    .leaflet-top.leaflet-right .map-layer-control:first-child,
+    .leaflet-top.leaflet-right .map-basemap-control:first-child {
+      margin-left: 0;
+    }
+
+    .map-layer-head {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 10px 0 12px;
+      color: #ffffff;
+      font-family: "Orbitron", sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+      background: linear-gradient(90deg, #4470c6, #5f8fe3);
+    }
+
+    .map-layer-body {
+      max-height: 250px;
+      overflow: auto;
+      padding: 8px 8px 10px;
+      background: #ececec;
+    }
+
+    .map-layer-body.collapsed {
+      display: none;
+    }
+
+    .map-layer-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .map-panel-lock {
+      border: none;
+      background: transparent;
+      color: #ffffff;
+      font-size: 17px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .map-panel-lock:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .map-layer-row {
+      display: grid;
+      grid-template-columns: 1fr 90px;
+      gap: 8px;
+      align-items: center;
+      min-height: 32px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      padding: 4px 2px;
+    }
+
+    .map-layer-row:last-child {
+      border-bottom: none;
+    }
+
+    .map-layer-row.section {
+      grid-template-columns: 1fr;
+      min-height: 28px;
+      color: #49566c;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      background: rgba(99, 121, 167, 0.08);
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .map-layer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .map-layer-check {
+      width: 16px;
+      height: 16px;
+      accent-color: #5a8ade;
+      flex-shrink: 0;
+      margin: 0;
+    }
+
+    .map-layer-name {
+      font-size: 15px;
+      color: #1f1f1f;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .map-layer-opacity {
+      width: 100%;
+      height: 8px;
+      accent-color: #6b8fd7;
+    }
+
+    .map-basemap-control {
+      background: #f6f7f9;
+      border: 1px solid #c7d3e8;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+      min-width: 190px;
+    }
+
+    .map-basemap-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #e1e7f3;
+      border-bottom: 1px solid #d0dbef;
+      color: #2b3a58;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .map-basemap-head .map-panel-lock {
+      color: #2b3a58;
+    }
+
+    .map-basemap-head .map-panel-lock:hover {
+      background: rgba(43, 58, 88, 0.12);
+    }
+
+    .map-basemap-body.collapsed {
+      display: none;
+    }
+
+    .map-basemap-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-bottom: 1px solid #d6deed;
+    }
+
+    .map-basemap-tab {
+      border: none;
+      background: #f1f3f7;
+      color: #606a78;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .map-basemap-tab.active {
+      background: #dfe7f8;
+      color: #1f2f4f;
+    }
+
+    .leaflet-control-scale-line {
+      border: 1px solid rgba(117, 225, 255, 0.62);
+      border-top: none;
+      background: rgba(4, 24, 46, 0.94);
+      color: #e8f7ff;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+      text-shadow: none;
+    }
+
+    .map-legend {
+      min-width: 168px;
+      border: 1px solid rgba(117, 225, 255, 0.35);
+      border-radius: 10px;
+      background: rgba(3, 18, 36, 0.92);
+      padding: 8px;
+      color: #dff4ff;
+      box-shadow: 0 8px 20px rgba(2, 7, 17, 0.45);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .map-legend-title {
+      color: #99e8ff;
+      font-family: "Orbitron", sans-serif;
+      font-size: 11px;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .map-legend-gradient {
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(117, 225, 255, 0.3);
+      background: linear-gradient(90deg, #30123b 0%, #4665ff 20%, #35b9ff 40%, #29d6b0 60%, #f9e721 80%, #f1605d 100%);
+      margin-bottom: 4px;
+    }
+
+    .map-legend-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #99d4f1;
+    }
+
+    .preview-meta {
+      border: 1px solid rgba(76, 216, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(4, 14, 29, 0.72);
+      padding: 8px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 12px;
+      color: #9fdbf8;
+      margin-bottom: 8px;
+      min-height: 120px;
+    }
+
+    .viz-map-main {
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .map-canvas {
+      width: 100%;
+      height: 520px;
+      border-radius: 10px;
+      border: 1px solid rgba(76, 216, 255, 0.3);
+      display: none;
+      z-index: 1;
+    }
+
+    .viz-map-main .preview-img {
+      max-height: none;
+      height: 520px;
+      margin-top: 0;
+    }
+
+    .preview-img {
+      width: 100%;
+      max-height: 540px;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid rgba(76, 216, 255, 0.3);
+      display: none;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      min-height: 200px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .metrics-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      align-items: start;
+    }
+
+    @media (max-width: 1400px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .metrics-table-wrap {
+      border: 1px solid rgba(76, 216, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(4, 14, 29, 0.72);
+      overflow: auto;
+      max-height: calc(100vh - 560px);
+      min-height: 240px;
+    }
+
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 420px;
+    }
+
+    .metrics-table th,
+    .metrics-table td {
+      border-bottom: 1px dashed rgba(76, 216, 255, 0.2);
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .metrics-table th {
+      color: #b8eeff;
+      font-family: "Orbitron", sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: rgba(8, 25, 50, 0.8);
+      position: sticky;
+      top: 0;
+    }
+
+    .metrics-note {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+
+    .compare-job-list {
+      border: 1px solid rgba(76, 216, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(4, 14, 29, 0.72);
+      max-height: 260px;
+      overflow: auto;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .compare-job-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid rgba(76, 216, 255, 0.16);
+      border-radius: 8px;
+      padding: 7px 8px;
+      background: rgba(11, 28, 54, 0.45);
+    }
+
+    .compare-job-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+
+    .compare-job-main {
+      min-width: 0;
+    }
+
+    .compare-job-name {
+      color: #d7f4ff;
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .compare-job-sub {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .compare-job-algo {
+      color: #7effc8;
+      font-size: 12px;
+      font-family: "Orbitron", sans-serif;
+      white-space: nowrap;
+    }
+
+    .compare-table {
+      min-width: 860px;
+    }
+
+    .compare-metric-col {
+      min-width: 180px;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: rgba(8, 25, 50, 0.92);
+    }
+
+    .compare-table td.compare-metric-col {
+      background: rgba(6, 20, 40, 0.94);
+    }
+
+    .compare-chart-tools {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .compare-chart-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+      .compare-chart-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .compare-chart-card {
+      border: 1px solid rgba(76, 216, 255, 0.24);
+      border-radius: 10px;
+      background: rgba(4, 14, 29, 0.75);
+      padding: 10px;
+    }
+
+    .compare-chart-title {
+      font-size: 12px;
+      color: #d9f3ff;
+      font-family: "Orbitron", sans-serif;
+      margin-bottom: 8px;
+      letter-spacing: 0.4px;
+    }
+
+    .compare-chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .compare-chart-head .compare-chart-title {
+      margin-bottom: 0;
+    }
+
+    .compare-chart-download {
+      padding: 6px 10px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .compare-canvas-wrap {
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #d8dde3;
+      padding: 8px;
+      min-height: 340px;
+    }
+
+    .compare-canvas-wrap canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+
+    .compare-canvas-wrap.square {
+      aspect-ratio: 1 / 1;
+      min-height: 0;
+    }
+
+    .compare-canvas-wrap.square canvas {
+      height: 100%;
+    }
+
+    .compare-figure-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .viz-card {
+      border: 1px solid rgba(76, 216, 255, 0.2);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(4, 14, 29, 0.8), rgba(6, 20, 40, 0.9));
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      min-height: 320px;
+    }
+
+    .viz-title {
+      font-size: 13px;
+      font-family: "Orbitron", sans-serif;
+      color: #7effc8;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      text-align: center;
+      width: 100%;
+      border-bottom: 1px dashed rgba(126, 255, 200, 0.2);
+      padding-bottom: 6px;
+    }
+
+    .viz-img {
+      width: 100%;
+      height: auto;
+      min-height: 230px;
+      aspect-ratio: 16 / 10;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid rgba(76, 216, 255, 0.4);
+      background: #ffffff;
+      padding: 6px;
+      display: none;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+    }
+
+    .viz-img:hover {
+      transform: scale(1.015);
+      box-shadow: 0 4px 16px rgba(126, 255, 200, 0.3);
+      border-color: rgba(126, 255, 200, 0.8);
+      z-index: 10;
+    }
+
+    .viz-hint {
+      color: var(--muted);
+      font-size: 11px;
+      min-height: 16px;
+      margin-top: 8px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .progress-wrap {
+      margin-top: 2px;
+      margin-bottom: 8px;
+      height: 8px;
+      background: rgba(4, 18, 36, 0.8);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(76, 216, 255, 0.15);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(126, 255, 200, 0.5);
+    }
+
+    .progress-text {
+      text-align: right;
+      font-size: 11px;
+      color: var(--accent-2);
+      margin-top: -4px;
+      margin-bottom: 8px;
+      font-family: "Orbitron", sans-serif;
+    }
+
+    @keyframes pulse-anim {
+      0% {
+        opacity: 0.6;
+        box-shadow: 0 0 5px rgba(126, 255, 200, 0.3);
+      }
+
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 14px rgba(126, 255, 200, 0.8);
+      }
+    }
+
+    .log-line {
+      margin: 2px 0;
+      word-wrap: break-word;
+      padding-left: 2px;
+      border-left: 2px solid transparent;
+    }
+
+    .log-line:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .log-info {
+      color: #dff4ff;
+    }
+
+    .log-warn {
+      color: #ffc77a;
+      border-left-color: #ffc77a;
+      padding-left: 6px;
+    }
+
+    .log-error {
+      color: #ff8e8e;
+      border-left-color: #ff8e8e;
+      padding-left: 6px;
+    }
+
+    .log-success {
+      color: #72f4aa;
+    }
+
+    .artifact-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      text-decoration: none;
+      color: #9ce6ff;
+      border-bottom: 1px dashed rgba(76, 216, 255, 0.2);
+      font-size: 12px;
+      transition: background 0.2s, padding-left 0.2s;
+    }
+
+    .artifact-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .artifact-title {
+      color: #c6eeff;
+      font-size: 12px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .artifact-sub {
+      color: #7bb2d6;
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .artifact-item:hover {
+      background: rgba(76, 216, 255, 0.08);
+      padding-left: 14px;
+    }
+
+    .artifact-icon {
+      width: 16px;
+      height: 16px;
+      fill: var(--accent);
+      flex-shrink: 0;
+    }
+  </style>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+    :root {
+      --font-ui: "Manrope", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      --font-display: "Space Grotesk", "Microsoft YaHei UI", sans-serif;
+      --bg-0: #061522;
+      --bg-1: #0c2537;
+      --bg-2: #15364d;
+      --line: rgba(132, 198, 230, 0.28);
+      --line-strong: rgba(153, 224, 255, 0.78);
+      --text: #ecf7ff;
+      --muted: #9fbdd3;
+      --accent: #59d5f8;
+      --accent-2: #7ce5bf;
+      --warn: #ffc38f;
+      --ok: #7ce5bf;
+      --err: #ff9b99;
+      --panel: rgba(9, 27, 41, 0.78);
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background:
+        radial-gradient(1200px 620px at -10% -5%, rgba(89, 213, 248, 0.22), transparent 56%),
+        radial-gradient(900px 500px at 108% 8%, rgba(124, 229, 191, 0.18), transparent 58%),
+        radial-gradient(700px 380px at 50% 110%, rgba(62, 139, 188, 0.2), transparent 72%),
+        linear-gradient(155deg, var(--bg-0) 0%, var(--bg-1) 46%, var(--bg-2) 100%);
+    }
+
+    body::before {
+      opacity: 0.7;
+      background-image:
+        linear-gradient(rgba(127, 195, 229, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127, 195, 229, 0.06) 1px, transparent 1px);
+      background-size: 30px 30px;
+      mask-image: radial-gradient(circle at center, black 36%, transparent 100%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto 8% -180px auto;
+      width: 420px;
+      height: 420px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(124, 229, 191, 0.2), transparent 70%);
+      filter: blur(16px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .screen {
+      max-width: 1560px;
+      padding: 18px 18px 26px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .screen>* {
+      animation: reveal-up 0.58s ease both;
+    }
+
+    .screen>*:nth-child(2) {
+      animation-delay: 0.05s;
+    }
+
+    .screen>*:nth-child(3) {
+      animation-delay: 0.1s;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 10px;
+      z-index: 40;
+      padding: 14px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(132, 198, 230, 0.34);
+      background: linear-gradient(130deg, rgba(28, 84, 114, 0.35), rgba(8, 27, 41, 0.84));
+      box-shadow: 0 18px 38px rgba(1, 8, 16, 0.45), inset 0 1px 0 rgba(177, 223, 245, 0.12);
+      backdrop-filter: blur(8px);
+      gap: 16px;
+    }
+
+    .chip {
+      border-color: rgba(152, 219, 250, 0.34);
+      background: rgba(15, 46, 67, 0.72);
+      color: #b6d5ea;
+      padding: 7px 12px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .title {
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2.1vw, 30px);
+      line-height: 1.16;
+      color: #e9f8ff;
+      text-shadow: 0 0 30px rgba(89, 213, 248, 0.26);
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: #9fc0d7;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+    }
+
+    .kpi-grid {
+      margin-top: 14px;
+      gap: 12px;
+      grid-template-columns: repeat(4, minmax(200px, 1fr));
+    }
+
+    .kpi {
+      border: 1px solid rgba(132, 198, 230, 0.28);
+      border-radius: 16px;
+      background: linear-gradient(152deg, rgba(15, 48, 70, 0.74), rgba(8, 25, 39, 0.78));
+      box-shadow: 0 14px 28px rgba(2, 10, 18, 0.4);
+      min-height: 94px;
+      padding: 12px 14px;
+      transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+    }
+
+    .kpi:hover {
+      transform: translateY(-2px);
+      border-color: rgba(153, 224, 255, 0.6);
+      box-shadow: 0 16px 34px rgba(2, 10, 18, 0.48);
+    }
+
+    .kpi::after {
+      height: 2px;
+      opacity: 0.85;
+      background: linear-gradient(90deg, transparent, rgba(89, 213, 248, 0.88), transparent);
+    }
+
+    .kpi-label {
+      color: #9ebfd5;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .kpi-value {
+      margin-top: 7px;
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2vw, 26px);
+      color: #f0f9ff;
+      line-height: 1.2;
+    }
+
+    .kpi-note {
+      margin-top: 4px;
+      color: #8fbbd3;
+    }
+
+    .tabs-header {
+      margin-top: 16px;
+      border: 1px solid rgba(132, 198, 230, 0.3);
+      border-radius: 14px;
+      padding: 6px;
+      width: fit-content;
+      background: rgba(9, 30, 47, 0.7);
+      box-shadow: inset 0 1px 0 rgba(177, 223, 245, 0.08);
+      gap: 6px;
+    }
+
+    .tab-btn {
+      height: 38px;
+      border-radius: 10px;
+      padding: 8px 18px;
+      text-transform: none;
+      letter-spacing: 0.2px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: #a4c2d7;
+      font-weight: 700;
+      border-bottom: none;
+      transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+    }
+
+    .tab-btn.active {
+      color: #083043;
+      background: linear-gradient(140deg, rgba(89, 213, 248, 0.92), rgba(124, 229, 191, 0.9));
+      text-shadow: none;
+      box-shadow: 0 8px 20px rgba(89, 213, 248, 0.28);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #e8f7ff;
+      background: rgba(21, 57, 78, 0.65);
+      border-bottom-color: transparent;
+      transform: translateY(-1px);
+    }
+
+    .tab-content {
+      margin-top: 16px;
+      animation: reveal-up 0.45s ease both;
+    }
+
+    .panel {
+      border: 1px solid rgba(132, 198, 230, 0.3);
+      border-radius: 16px;
+      background: linear-gradient(158deg, rgba(12, 37, 55, 0.82), rgba(8, 25, 40, 0.76));
+      box-shadow: 0 16px 32px rgba(1, 9, 17, 0.42), inset 0 1px 0 rgba(177, 223, 245, 0.1);
+      padding: 14px;
+      backdrop-filter: blur(8px);
+      animation: reveal-up 0.46s ease both;
+    }
+
+    .panel-head {
+      margin-bottom: 12px;
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      text-transform: none;
+      color: #bde8fb;
+    }
+
+    label {
+      color: #a4c2d7;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      font-size: 12px;
+    }
+
+    input,
+    select {
+      border: 1px solid rgba(126, 197, 232, 0.32);
+      border-radius: 10px;
+      background: rgba(4, 19, 31, 0.82);
+      color: #ecf7ff;
+      padding: 10px 11px;
+      font-size: 13px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    input:hover,
+    select:hover {
+      border-color: rgba(153, 224, 255, 0.5);
+      background: rgba(8, 28, 43, 0.86);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(153, 224, 255, 0.86);
+      box-shadow: 0 0 0 3px rgba(89, 213, 248, 0.18);
+    }
+
+    details {
+      border: 1px dashed rgba(126, 197, 232, 0.35);
+      border-radius: 12px;
+      background: rgba(9, 29, 45, 0.42);
+      padding: 9px 10px;
+    }
+
+    summary {
+      color: #f3cf9f;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: none;
+    }
+
+    .btns {
+      gap: 10px;
+    }
+
+    .btn {
+      border-radius: 10px;
+      border: 1px solid transparent;
+      padding: 10px 14px;
+      font-family: var(--font-ui);
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0.1px;
+      font-size: 13px;
+      color: #083245;
+      background: linear-gradient(135deg, #59d5f8, #7ce5bf);
+      box-shadow: 0 10px 20px rgba(89, 213, 248, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(89, 213, 248, 0.32);
+      filter: brightness(1.03);
+    }
+
+    .btn.alt {
+      color: #d9eefc;
+      border-color: rgba(126, 197, 232, 0.44);
+      background: rgba(10, 34, 52, 0.68);
+      box-shadow: none;
+    }
+
+    .btn.alt:hover {
+      border-color: rgba(153, 224, 255, 0.68);
+      background: rgba(18, 50, 72, 0.84);
+    }
+
+    .pill {
+      border-radius: 999px;
+      border-color: rgba(126, 197, 232, 0.4);
+      background: rgba(11, 37, 55, 0.82);
+      color: #cae7f8;
+      font-weight: 600;
+    }
+
+    .logs,
+    .list-box,
+    .metrics-table-wrap,
+    .preview-meta,
+    .compare-job-list {
+      border: 1px solid rgba(126, 197, 232, 0.24);
+      border-radius: 12px;
+      background: rgba(4, 17, 28, 0.76);
+      box-shadow: inset 0 0 0 1px rgba(177, 223, 245, 0.04);
+    }
+
+    .logs {
+      font-family: "JetBrains Mono", "Consolas", monospace;
+      line-height: 1.6;
+    }
+
+    .job-item,
+    .compare-job-item {
+      border: 1px solid rgba(126, 197, 232, 0.2);
+      border-radius: 10px;
+      background: rgba(8, 30, 46, 0.72);
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .job-item:hover,
+    .compare-job-item:hover {
+      border-color: rgba(153, 224, 255, 0.62);
+      background: rgba(13, 42, 63, 0.86);
+      transform: translateY(-1px);
+    }
+
+    .job-item.active,
+    .compare-job-item.active {
+      border-color: rgba(153, 224, 255, 0.8);
+      box-shadow: 0 0 0 1px rgba(153, 224, 255, 0.25) inset;
+    }
+
+    .job-status-badge {
+      border-radius: 999px;
+      border-color: rgba(126, 197, 232, 0.38);
+      background: rgba(9, 35, 53, 0.78);
+      color: #bae6fb;
+      font-size: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .metrics-table {
+      font-size: 12px;
+    }
+
+    .metrics-table th {
+      color: #caecfb;
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.35px;
+      background: rgba(11, 39, 59, 0.88);
+    }
+
+    .viz-card,
+    .compare-chart-card {
+      border: 1px solid rgba(126, 197, 232, 0.2);
+      border-radius: 12px;
+      background: rgba(8, 30, 46, 0.58);
+      box-shadow: inset 0 0 0 1px rgba(177, 223, 245, 0.04);
+    }
+
+    .viz-title,
+    .compare-chart-title {
+      color: #caecfb;
+      font-family: var(--font-display);
+      letter-spacing: 0.2px;
+    }
+
+    .preview-img,
+    .map-canvas,
+    .viz-img {
+      border-radius: 12px;
+      border-color: rgba(126, 197, 232, 0.32);
+    }
+
+    .artifact-item {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      margin-bottom: 4px;
+      padding: 9px 10px;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .artifact-item:hover {
+      border-color: rgba(126, 197, 232, 0.32);
+      background: rgba(89, 213, 248, 0.08);
+      transform: translateX(2px);
+    }
+
+    .map-layer-control,
+    .map-basemap-control {
+      border-radius: 10px;
+      border: 1px solid rgba(126, 197, 232, 0.32);
+      box-shadow: 0 10px 20px rgba(1, 9, 17, 0.35);
+      overflow: hidden;
+    }
+
+    .map-layer-control {
+      background: rgba(6, 21, 34, 0.92);
+    }
+
+    .map-basemap-control {
+      background: rgba(6, 21, 34, 0.9);
+      min-width: 210px;
+    }
+
+    .map-layer-head,
+    .map-basemap-head {
+      background: linear-gradient(90deg, #2d6c8f, #3e8aac);
+      color: #e9f8ff;
+      border-bottom: 1px solid rgba(126, 197, 232, 0.3);
+      font-family: var(--font-display);
+      font-size: 13px;
+    }
+
+    .map-layer-body,
+    .map-basemap-body {
+      background: rgba(8, 28, 43, 0.94);
+      color: #d9eefc;
+    }
+
+    .map-layer-row {
+      border-bottom-color: rgba(126, 197, 232, 0.18);
+    }
+
+    .map-layer-row.section {
+      color: #a4c8df;
+      background: rgba(58, 130, 168, 0.12);
+      border-top-color: rgba(126, 197, 232, 0.2);
+    }
+
+    .map-layer-name,
+    .map-basemap-head .map-panel-lock,
+    .map-panel-lock {
+      color: #d9eefc;
+    }
+
+    .map-basemap-tabs {
+      border-bottom-color: rgba(126, 197, 232, 0.26);
+    }
+
+    .map-basemap-tab {
+      background: rgba(11, 37, 55, 0.9);
+      color: #9fbdd3;
+    }
+
+    .map-basemap-tab.active {
+      background: rgba(89, 213, 248, 0.28);
+      color: #eaf8ff;
+    }
+
+    @keyframes reveal-up {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 1080px) {
+      .screen {
+        padding: 12px 12px 20px;
+      }
+
+      .topbar {
+        position: static;
+        padding: 12px;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+      }
+
+      .tabs-header {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      .tab-btn {
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .panel {
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen">
+    <header class="topbar">
+      <div class="chip" id="chip-time">时间: --</div>
+      <div class="brand-center">
+        <div class="title">铀成矿预测一体化平台</div>
+        <div class="subtitle">训练与预测统一入口 · 实时日志与结果联动</div>
+      </div>
+    </header>
+
+    <section class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">当前任务</div>
+        <div class="kpi-value" id="kpi-job">-</div>
+        <div class="kpi-note">统一流程任务编号</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">运行状态</div>
+        <div class="kpi-value" id="kpi-status">空闲</div>
+        <div class="kpi-note" id="kpi-type">类型: -</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">先验配置</div>
+        <div class="kpi-value" id="kpi-priors">4/4</div>
+        <div class="kpi-note">已启用地质先验数量</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">结果预览</div>
+        <div class="kpi-value" id="kpi-preview">未就绪</div>
+        <div class="kpi-note">概率栅格状态</div>
+      </div>
+    </section>
+
+    <nav class="tabs-header">
+      <button class="tab-btn active" onclick="switchTab(event, 'tab-train')">训练-预测</button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-viz')">结果可视化</button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-metrics')">性能指标</button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-compare')">Compare</button>
+    </nav>
+
+    <section class="tab-content active" id="tab-train">
+      <div class="tab-grid-task">
+        <section class="panel wide-mobile">
+          <div class="panel-head">
+            <h3 class="panel-title">统一任务提交（训练 + 预测）</h3>
+          </div>
+          <form id="unified-form">
+            <div class="row"><label>factors.zip（因子栅格）</label><input type="file" id="factors_zip"
+                accept=".zip" required /></div>
+            <div class="row2">
+              <div class="row"><label>samples.zip（训练样本 shp）</label><input type="file" id="samples_zip"
+                  accept=".zip" required /></div>
+              <div class="row"><label>research.zip（预测范围 shp）</label><input type="file"
+                  id="research_zip" accept=".zip" required /></div>
+            </div>
+            <div class="row"><label>priors.zip（包含 1-4 个先验栅格）</label><input type="file"
+                id="priors_zip" accept=".zip" required /></div>
+
+            <details open>
+              <summary>先验选择</summary>
+              <div class="row2">
+                <div class="row"><label>启用穹隆先验（use_dome）</label><select id="use_dome">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select></div>
+                <div class="row"><label>启用断裂先验（use_fault）</label><select id="use_fault">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>启用地层先验（use_strata）</label><select id="use_strata">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select></div>
+                <div class="row"><label>启用奇异度先验（use_singularity）</label><select id="use_singularity">
+                    <option value="true">true</option>
+                    <option value="false" selected>false</option>
+                  </select></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>穹隆匹配关键词（dome_pattern）</label><input id="dome_pattern" value="dome" /></div>
+                <div class="row"><label>断裂匹配关键词（fault_pattern）</label><input id="fault_pattern" value="fault,thrust" /></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>地层匹配关键词（strata_pattern）</label><input id="strata_pattern" value="strata,fav" /></div>
+                <div class="row"><label>奇异度兼容项（本论文未启用）</label><input id="singularity_pattern" value="singularity,fractal" /></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>标签列（label_col）</label><input id="label_col" value="Class" /></div>
+                <div class="row"></div>
+              </div>
+            </details>
+
+            <details>
+              <summary>训练参数</summary>
+              <div class="row2">
+                <div class="row"><label>算法（algorithm）</label><select id="algorithm">
+                    <option value="ginn" selected>地质约束神经网络（GINN）</option>
+                    <option value="rf">Random Forest</option>
+                    <option value="lightgbm">LightGBM</option>
+                    <option value="catboost">CatBoost</option>
+                    <option value="xgboost">XGBoost</option>
+                    <option value="mlp">多层感知机（MLP）</option>
+                    <option value="gcn_transformer">GCN-Transformer</option>
+                    <option value="gnn">图神经网络（GNN）</option>
+                    <option value="vae">变分自编码器（VAE）</option>
+                    <option value="transunet">TransUNet</option>
+                  </select></div>
+                <div class="row"><label>优化方式（optimizer）</label><select id="optimizer">
+                    <option value="none" selected>none</option>
+                    <option value="bayes">bayes</option>
+                  </select></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>迭代轮次（epochs）</label><input id="epochs" type="number" value="800" /></div>
+                <div class="row"><label>早停轮次（patience）</label><input id="patience" type="number" value="60" /></div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>模型名称（model_name）</label><input id="model_name" value="mineral_model_multi_phy_final" />
+                </div>
+                <div class="row"><label>贝叶斯轮次（bayes_trials）</label><input id="bayes_trials" type="number" value="25" min="1" />
+                </div>
+              </div>
+              <div class="row2">
+                <div class="row"><label>关闭 SHAP（disable_shap）</label><select id="disable_shap">
+                    <option value="false" selected>false</option>
+                    <option value="true">true</option>
+                  </select></div>
+                <div class="row"></div>
+              </div>
+            </details>
+
+            <details>
+              <summary>预测参数</summary>
+              <div class="row2">
+                <div class="row"><label>预测批量（predict_batch_size）</label><input id="predict_batch_size" type="number"
+                    value="262144" /></div>
+                <div class="row"><label>预测输出路径（predict_output_tif，可选）</label><input id="predict_output_tif"
+                    placeholder="output/probability.tif" /></div>
+              </div>
+            </details>
+
+            <div class="btns">
+              <button class="btn" type="submit">启动统一任务</button>
+              <button class="btn alt" type="button" id="btn-refresh-jobs">刷新任务历史</button>
+              <button class="btn alt" type="button" id="btn-select-latest">选中最新任务</button>
+              <button class="btn alt" type="button" id="btn-refresh-files">刷新当前产物</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">运行监控</h3>
+            <div class="btns" style="margin:0;">
+              <button class="btn alt" type="button" id="btn-generate-report">一键生成标准报告</button>
+              <a class="btn alt" id="btn-open-report" target="_blank" style="display:none;">打开报告</a>
+              <a class="btn alt" id="btn-download" target="_blank" style="display:none;">下载结果 ZIP</a>
+            </div>
+          </div>
+          <div class="pill-row">
+            <div class="pill" id="pill-job">任务: -</div>
+            <div class="pill" id="pill-type">类型: -</div>
+            <div class="pill" id="pill-status">状态: 空闲</div>
+          </div>
+          <div class="progress-wrap" id="progress-wrap" style="display: none;">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div class="progress-text" id="progress-text" style="display: none;">0%</div>
+          <div class="logs" id="logs">系统已就绪，请先提交统一任务。</div>
+        </section>
+
+        <section class="panel wide-mobile span-full">
+          <div class="panel-head">
+            <h3 class="panel-title">统一任务历史</h3>
+            <div class="chip" id="job-history-meta">0 个任务</div>
+          </div>
+          <div class="hint" style="margin-bottom: 8px;">点击任务条目可切换日志、产物、预测图与指标。</div>
+          <div class="list-box" id="jobs"></div>
+        </section>
+
+        <section class="panel wide-mobile span-full">
+          <div class="panel-head">
+            <h3 class="panel-title">任务产物</h3>
+          </div>
+          <div class="list-box" id="artifacts">
+            <div class="hint">暂无产物。</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-viz">
+      <div class="tab-grid-viz">
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">结果显示</h3>
+          </div>
+          <div class="preview-meta" id="preview-meta">暂无预测结果。</div>
+          <div class="viz-map-main">
+            <img class="preview-img" id="preview-img" alt="预测结果预览图" />
+            <div id="map" class="map-canvas"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-metrics">
+      <div class="tab-grid-metrics">
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">性能指标看板</h3>
+          </div>
+          <div class="metrics-table-wrap">
+            <table class="metrics-table">
+              <thead>
+                <tr>
+                  <th>指标</th>
+                  <th>验证集</th>
+                  <th>测试集</th>
+                </tr>
+              </thead>
+              <tbody id="metrics-body"></tbody>
+            </table>
+          </div>
+          <div class="metrics-note" id="metrics-note">暂未检测到指标文件。</div>
+        </section>
+
+        <div class="viz-grid">
+          <div class="viz-card">
+            <div class="viz-title">训练损失曲线</div>
+            <img id="loss-img" class="viz-img" alt="训练损失曲线" />
+            <div id="loss-hint" class="viz-hint">暂无损失曲线图。</div>
+          </div>
+          <div class="viz-card">
+            <div class="viz-title">ROC 曲线</div>
+            <img id="roc-img" class="viz-img" alt="ROC 曲线" />
+            <div id="roc-hint" class="viz-hint">暂无 ROC 图。</div>
+          </div>
+          <div class="viz-card">
+            <div class="viz-title">PR 曲线</div>
+            <img id="pr-img" class="viz-img" alt="PR 曲线" />
+            <div id="pr-hint" class="viz-hint">暂无 PR 图。</div>
+          </div>
+          <div class="viz-card">
+            <div class="viz-title">SHAP 柱状图</div>
+            <img id="shap-bar-img" class="viz-img" alt="SHAP 柱状图" />
+            <div id="shap-bar-hint" class="viz-hint">暂无 SHAP 柱状图。</div>
+          </div>
+          <div class="viz-card">
+            <div class="viz-title">SHAP 汇总图</div>
+            <img id="shap-img" class="viz-img" alt="SHAP 汇总图" />
+            <div id="shap-hint" class="viz-hint">暂无 SHAP 汇总图。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-compare">
+      <div class="tab-grid-compare">
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">Multi-Job Comparison</h3>
+            <div class="chip" id="compare-meta">No job selected</div>
+          </div>
+          <div class="btns" style="margin-bottom: 10px;">
+            <button class="btn alt" type="button" id="btn-compare-select-done">Select All Completed</button>
+            <button class="btn alt" type="button" id="btn-compare-clear">Clear Selection</button>
+            <button class="btn alt" type="button" id="btn-compare-refresh">Refresh Compare</button>
+          </div>
+          <div class="compare-job-list" id="compare-job-list">
+            <div class="hint">No comparable jobs yet.</div>
+          </div>
+          <div class="metrics-note" id="compare-note">Select at least two completed jobs.</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">Metrics Comparison Table</h3>
+          </div>
+          <div class="metrics-table-wrap">
+            <table class="metrics-table compare-table">
+              <thead id="compare-metrics-head"></thead>
+              <tbody id="compare-metrics-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3 class="panel-title">Metrics Bar Comparison</h3>
+          </div>
+          <div class="compare-chart-tools">
+            <label style="margin:0;">Dataset</label>
+            <select id="compare-metric-split" style="max-width: 200px;">
+              <option value="test" selected>Test</option>
+              <option value="validation">Validation</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;">
+              <input type="checkbox" id="compare-bar-show-values" />
+              Show Values
+            </label>
+            <button class="btn alt" type="button" id="btn-compare-bar-download">Download 600 DPI PNG</button>
+          </div>
+          <div class="compare-canvas-wrap">
+            <canvas id="compare-metrics-bar-canvas"></canvas>
+          </div>
+        </section>
+
+        <section class="panel span-full">
+          <div class="panel-head">
+            <h3 class="panel-title">ROC / PR Curves</h3>
+          </div>
+          <div class="compare-chart-grid">
+            <div class="compare-chart-card">
+              <div class="compare-chart-head">
+                <div class="compare-chart-title">ROC Overlay (All Models)</div>
+                <button class="btn alt compare-chart-download" type="button" id="btn-compare-roc-download">Download ROC 600 DPI</button>
+              </div>
+              <div class="compare-canvas-wrap square">
+                <canvas id="compare-roc-canvas"></canvas>
+              </div>
+            </div>
+            <div class="compare-chart-card">
+              <div class="compare-chart-head">
+                <div class="compare-chart-title">PR Overlay (All Models)</div>
+                <button class="btn alt compare-chart-download" type="button" id="btn-compare-pr-download">Download PR 600 DPI</button>
+              </div>
+              <div class="compare-canvas-wrap square">
+                <canvas id="compare-pr-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="compare-figure-note" id="compare-figure-note">Select jobs to render merged ROC/PR curves.</div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const API = {
+      submitUnified: "/jobs/upload/unified",
+      listJobs: "/jobs",
+    };
+    const METRIC_ITEMS = [
+      ["accuracy", "准确率"],
+      ["precision", "精确率"],
+      ["recall", "召回率"],
+      ["f1", "F1 分数"],
+      ["balanced_accuracy", "平衡准确率"],
+      ["mcc", "MCC"],
+      ["roc_auc", "ROC-AUC"],
+      ["pr_auc", "PR-AUC"],
+    ];
+    const COMPARE_METRIC_ITEMS = [
+      ["accuracy", "Accuracy"],
+      ["precision", "Precision"],
+      ["recall", "Recall"],
+      ["f1", "F1 Score"],
+      ["balanced_accuracy", "Balanced Accuracy"],
+      ["mcc", "MCC"],
+      ["roc_auc", "ROC-AUC"],
+      ["pr_auc", "PR-AUC"],
+    ];
+
+    const els = {
+      time: document.getElementById("chip-time"),
+      kpiJob: document.getElementById("kpi-job"),
+      kpiStatus: document.getElementById("kpi-status"),
+      kpiType: document.getElementById("kpi-type"),
+      kpiPriors: document.getElementById("kpi-priors"),
+      kpiPreview: document.getElementById("kpi-preview"),
+      form: document.getElementById("unified-form"),
+      logs: document.getElementById("logs"),
+      jobs: document.getElementById("jobs"),
+      artifacts: document.getElementById("artifacts"),
+      previewMeta: document.getElementById("preview-meta"),
+      previewImg: document.getElementById("preview-img"),
+      map: document.getElementById("map"),
+      metricsBody: document.getElementById("metrics-body"),
+      metricsNote: document.getElementById("metrics-note"),
+      lossImg: document.getElementById("loss-img"),
+      lossHint: document.getElementById("loss-hint"),
+      rocImg: document.getElementById("roc-img"),
+      prImg: document.getElementById("pr-img"),
+      shapImg: document.getElementById("shap-img"),
+      shapBarImg: document.getElementById("shap-bar-img"),
+      rocHint: document.getElementById("roc-hint"),
+      prHint: document.getElementById("pr-hint"),
+      shapHint: document.getElementById("shap-hint"),
+      shapBarHint: document.getElementById("shap-bar-hint"),
+      generateReport: document.getElementById("btn-generate-report"),
+      openReport: document.getElementById("btn-open-report"),
+      download: document.getElementById("btn-download"),
+      refreshJobs: document.getElementById("btn-refresh-jobs"),
+      selectLatest: document.getElementById("btn-select-latest"),
+      refreshFiles: document.getElementById("btn-refresh-files"),
+      historyMeta: document.getElementById("job-history-meta"),
+      pillJob: document.getElementById("pill-job"),
+      pillType: document.getElementById("pill-type"),
+      pillStatus: document.getElementById("pill-status"),
+      progressWrap: document.getElementById("progress-wrap"),
+      progressBar: document.getElementById("progress-bar"),
+      progressText: document.getElementById("progress-text"),
+      compareMeta: document.getElementById("compare-meta"),
+      compareNote: document.getElementById("compare-note"),
+      compareJobList: document.getElementById("compare-job-list"),
+      compareMetricsHead: document.getElementById("compare-metrics-head"),
+      compareMetricsBody: document.getElementById("compare-metrics-body"),
+      compareMetricSplit: document.getElementById("compare-metric-split"),
+      compareBarShowValues: document.getElementById("compare-bar-show-values"),
+      compareBarDownload: document.getElementById("btn-compare-bar-download"),
+      compareRocDownload: document.getElementById("btn-compare-roc-download"),
+      comparePrDownload: document.getElementById("btn-compare-pr-download"),
+      compareMetricsBarCanvas: document.getElementById("compare-metrics-bar-canvas"),
+      compareRocCanvas: document.getElementById("compare-roc-canvas"),
+      comparePrCanvas: document.getElementById("compare-pr-canvas"),
+      compareFigureNote: document.getElementById("compare-figure-note"),
+      compareRefresh: document.getElementById("btn-compare-refresh"),
+      compareSelectDone: document.getElementById("btn-compare-select-done"),
+      compareClear: document.getElementById("btn-compare-clear"),
+    };
+
+    function switchTab(e, tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+      if (tabId === "tab-viz") {
+        setTimeout(() => {
+          if (mapInstance) {
+            mapInstance.invalidateSize(true);
+            if (activeOverlayBounds) {
+              mapInstance.fitBounds(activeOverlayBounds, { animate: false, padding: [12, 12] });
+            }
+          }
+        }, 200);
+      } else if (tabId === "tab-compare") {
+        refreshComparePanel();
+      }
+    }
+
+    let activeJobId = null;
+    let activeJob = null;
+    let activeArtifacts = [];
+    let latestReportArtifactPath = "";
+    let unifiedJobs = [];
+    let pollTimer = null;
+    const compareSelectedJobIds = new Set();
+    const compareDataCache = new Map();
+    let compareCurrentRows = [];
+    let compareRocChart = null;
+    let comparePrChart = null;
+    let compareMetricsBarChart = null;
+    const COMPARE_BAR_EXPORT = {
+      widthIn: 7.0,
+      heightIn: 4.5,
+      dpi: 600,
+      cssPpi: 96,
+    };
+    const COMPARE_CURVE_EXPORT = {
+      widthIn: 5.0,
+      heightIn: 5.0,
+      dpi: 600,
+      cssPpi: 96,
+    };
+    const JOURNAL_COLORS = [
+      "#0072B2",
+      "#D55E00",
+      "#009E73",
+      "#CC79A7",
+      "#56B4E9",
+      "#E69F00",
+      "#000000",
+      "#F0E442",
+      "#999999",
+      "#882255",
+    ];
+
+    if (window.Chart) {
+      Chart.defaults.font.family = "'Times New Roman', Times, serif";
+      Chart.defaults.color = "#1d2430";
+      Chart.defaults.borderColor = "#d6dbe2";
+      Chart.defaults.animation = false;
+      Chart.defaults.devicePixelRatio = 2;
+    }
+
+    function nowClockText() {
+      const d = new Date();
+      return "时间: " + d.toLocaleString();
+    }
+    function updateClock() {
+      els.time.textContent = nowClockText();
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    function boolStr(value) {
+      return String(value).toLowerCase() === "true" ? "true" : "false";
+    }
+    function parseBool(value) {
+      return boolStr(value) === "true";
+    }
+    function enabledPriorCount() {
+      const values = [
+        parseBool(document.getElementById("use_dome").value),
+        parseBool(document.getElementById("use_fault").value),
+        parseBool(document.getElementById("use_strata").value),
+        parseBool(document.getElementById("use_singularity").value),
+      ];
+      return values.filter(Boolean).length;
+    }
+    function refreshPriorKpi() {
+      const count = enabledPriorCount();
+      els.kpiPriors.textContent = count + "/4";
+    }
+    ["use_dome", "use_fault", "use_strata", "use_singularity"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", refreshPriorKpi);
+    });
+    refreshPriorKpi();
+
+    function parseProgress(lines) {
+      if (!lines || lines.length === 0) return null;
+      let epochsMatch = null;
+      let predictMatch = null;
+      // Search from bottom up
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (!epochsMatch) {
+          const m = line.match(/Epoch\s+(\d+)\/(\d+)/i) || line.match(/epoch.*?(\d+)\/(\d+)/i);
+          if (m) epochsMatch = m;
+        }
+        if (!predictMatch) {
+          const m = line.match(/Predict.*?(?:batch|step)\s+(\d+)\/(\d+)/i) || line.match(/(?:batch|step)\s+(\d+)\/(\d+)/i);
+          if (m) predictMatch = m;
+        }
+        if (epochsMatch || predictMatch) break;
+      }
+      if (epochsMatch) {
+        return Math.min(100, Math.round((parseInt(epochsMatch[1]) / parseInt(epochsMatch[2])) * 100));
+      }
+      if (predictMatch && predictMatch[2]) {
+        return Math.min(100, Math.round((parseInt(predictMatch[1]) / parseInt(predictMatch[2])) * 100));
+      }
+      // Check for indeterminate active states
+      for (let i = lines.length - 1; i >= Math.max(0, lines.length - 10); i--) {
+        const lower = lines[i].toLowerCase();
+        if (lower.includes("predicting") || lower.includes("training") || lower.includes("packaging")) {
+          return -1; // indeterminate
+        }
+      }
+      return null;
+    }
+
+    function setLogs(lines) {
+      if (!Array.isArray(lines) || lines.length === 0) {
+        els.logs.innerHTML = '<div class="hint">暂无日志。</div>';
+        return;
+      }
+      const htmlLines = lines.map(line => {
+        let cls = "log-info";
+        const lower = line.toLowerCase();
+        if (lower.includes("error") || lower.includes("failed") || lower.includes("exception") || lower.includes("traceback")) {
+          cls = "log-error";
+        } else if (lower.includes("warn")) {
+          cls = "log-warn";
+        } else if (lower.includes("success") || lower.includes("done") || lower.includes("saved") || lower.includes("completed")) {
+          cls = "log-success";
+        }
+        const safeLine = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `<div class="log-line ${cls}">${safeLine}</div>`;
+      });
+      els.logs.innerHTML = htmlLines.join("");
+      els.logs.scrollTop = els.logs.scrollHeight;
+
+      // Update progress visualization
+      if (activeJob && (activeJob.status === "running" || activeJob.status === "queued" || activeJob.status === "packaging")) {
+        els.progressWrap.style.display = "block";
+        els.progressText.style.display = "block";
+        els.progressBar.style.background = "linear-gradient(90deg, var(--accent), var(--accent-2))";
+        els.progressBar.style.boxShadow = "0 0 10px rgba(126, 255, 200, 0.5)";
+
+        const prog = parseProgress(lines);
+        if (prog !== null && prog >= 0) {
+          els.progressBar.style.width = prog + "%";
+          els.progressText.textContent = prog + "% 处理中";
+          els.progressBar.style.animation = "none";
+        } else {
+          els.progressBar.style.width = "100%";
+          els.progressBar.style.animation = "pulse-anim 1s infinite alternate";
+          els.progressText.textContent = "处理中...";
+        }
+      } else if (activeJob && activeJob.status === "done") {
+        els.progressWrap.style.display = "block";
+        els.progressText.style.display = "block";
+        els.progressBar.style.background = "var(--ok)";
+        els.progressBar.style.boxShadow = "0 0 10px rgba(114, 244, 170, 0.5)";
+        els.progressBar.style.width = "100%";
+        els.progressBar.style.animation = "none";
+        els.progressText.textContent = "100% - 已完成";
+        els.progressText.style.color = "var(--ok)";
+      } else if (activeJob && activeJob.status === "failed") {
+        els.progressWrap.style.display = "block";
+        els.progressText.style.display = "block";
+        els.progressBar.style.width = "100%";
+        els.progressBar.style.background = "var(--err)";
+        els.progressBar.style.boxShadow = "0 0 10px rgba(255, 142, 142, 0.6)";
+        els.progressBar.style.animation = "none";
+        els.progressText.textContent = "执行失败";
+        els.progressText.style.color = "var(--err)";
+      } else {
+        els.progressWrap.style.display = "none";
+        els.progressText.style.display = "none";
+      }
+    }
+
+    function setPreviewEmpty(text) {
+      els.previewMeta.textContent = text || "暂无预测结果。";
+      els.previewImg.style.display = "none";
+      els.previewImg.removeAttribute("src");
+      updateMapLegend(null);
+      if (els.map) els.map.style.display = "none";
+      if (mapInstance && imageOverlay) {
+        mapInstance.removeLayer(imageOverlay);
+      }
+      for (const [, state] of factorOverlayCache.entries()) {
+        if (mapInstance && state.overlay && mapInstance.hasLayer(state.overlay)) {
+          mapInstance.removeLayer(state.overlay);
+        }
+      }
+      for (const [, state] of vectorOverlayCache.entries()) {
+        if (mapInstance && state.layer && mapInstance.hasLayer(state.layer)) {
+          mapInstance.removeLayer(state.layer);
+        }
+      }
+      imageOverlay = null;
+      resultOverlayBounds = null;
+      activeOverlayBounds = null;
+      els.kpiPreview.textContent = "未就绪";
+      renderMapLayerControl();
+    }
+
+    let mapInstance = null;
+    let imageOverlay = null;
+    let resultOverlayBounds = null;
+    let activeOverlayBounds = null;
+    let mapLegendControl = null;
+    let mapLegendContainer = null;
+    let mapLayerControl = null;
+    let mapLayerContainer = null;
+    let mapLayerBody = null;
+    let mapLayerLockBtn = null;
+    let baseMapControl = null;
+    let baseMapContainer = null;
+    let baseMapBody = null;
+    let baseMapLockBtn = null;
+
+    let streetBaseLayer = null;
+    let satelliteBaseLayer = null;
+    let terrainBaseLayer = null;
+    let activeBaseMode = "map";
+    let layerPanelLocked = true;
+    let basePanelLocked = false;
+
+    let resultLayerVisible = true;
+    let resultLayerOpacity = 85;
+    let factorLayerDefs = [];
+    let vectorLayerDefs = [];
+    const factorOverlayCache = new Map();
+    const vectorOverlayCache = new Map();
+
+    function legendValue(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n.toFixed(3) : "-";
+    }
+
+    function legendHtml(summary) {
+      const min = legendValue(summary && summary.min_probability);
+      const max = legendValue(summary && summary.max_probability);
+      const mean = legendValue(summary && summary.mean_probability);
+      return `
+        <div class="map-legend-title">预测概率图例</div>
+        <div class="map-legend-gradient"></div>
+        <div class="map-legend-row"><span>最小值 ${min}</span><span>最大值 ${max}</span></div>
+        <div class="map-legend-row"><span>均值 ${mean}</span><span>范围 0 → 1</span></div>
+      `;
+    }
+
+    function updateMapLegend(summary) {
+      if (!mapLegendContainer) return;
+      mapLegendContainer.innerHTML = legendHtml(summary || {});
+    }
+
+    function normalizeLayerLabel(path) {
+      const parts = String(path || "").replace(/\\/g, "/").split("/");
+      const file = parts[parts.length - 1] || path;
+      const stem = file.replace(/\.(tif|tiff)$/i, "");
+      const folder = (parts.length > 1 ? parts[parts.length - 2] : "").toLowerCase();
+      if (folder === "factors") return "因子图 - " + stem;
+      if (folder === "priors") return "先验图 - " + stem;
+      return stem;
+    }
+
+    function normalizeVectorLabel(path) {
+      const parts = String(path || "").replace(/\\/g, "/").split("/");
+      const file = parts[parts.length - 1] || path;
+      const stem = file.replace(/\.shp$/i, "");
+      const key = String(path || "").toLowerCase();
+      if (key.includes("/samples/")) return "训练样本";
+      if (key.includes("/research/")) return "研究区范围";
+      return "矢量图 - " + stem;
+    }
+
+    function updateActiveOverlayBounds() {
+      let union = null;
+      const merge = (rawBounds) => {
+        if (!rawBounds) return;
+        const b = L.latLngBounds(rawBounds);
+        if (!union) union = b;
+        else union.extend(b);
+      };
+
+      if (resultOverlayBounds && imageOverlay && mapInstance && mapInstance.hasLayer(imageOverlay)) {
+        merge(resultOverlayBounds);
+      }
+      factorLayerDefs.forEach((def) => {
+        if (!def.checked) return;
+        const state = factorOverlayCache.get(def.path);
+        if (!state || !state.bounds || !mapInstance || !mapInstance.hasLayer(state.overlay)) return;
+        merge(state.bounds);
+      });
+
+      activeOverlayBounds = union ? [[union.getSouth(), union.getWest()], [union.getNorth(), union.getEast()]] : null;
+    }
+
+    function fitToVisibleOverlays() {
+      if (!mapInstance) return;
+      updateActiveOverlayBounds();
+      if (activeOverlayBounds) {
+        mapInstance.fitBounds(activeOverlayBounds, { animate: false, padding: [12, 12] });
+      }
+    }
+
+    function refreshLayerPanelLockUi() {
+      if (mapLayerBody) {
+        mapLayerBody.classList.toggle("collapsed", !layerPanelLocked);
+      }
+      if (mapLayerLockBtn) {
+        mapLayerLockBtn.textContent = layerPanelLocked ? "🔒" : "🔓";
+        mapLayerLockBtn.title = layerPanelLocked ? "已锁定: 图层列表展开" : "已打开: 图层列表收起";
+      }
+    }
+
+    function toggleLayerPanelLock() {
+      layerPanelLocked = !layerPanelLocked;
+      refreshLayerPanelLockUi();
+    }
+
+    function refreshBasePanelLockUi() {
+      if (baseMapBody) {
+        baseMapBody.classList.toggle("collapsed", !basePanelLocked);
+      }
+      if (baseMapLockBtn) {
+        baseMapLockBtn.textContent = basePanelLocked ? "🔒" : "🔓";
+        baseMapLockBtn.title = basePanelLocked ? "已锁定: 底图列表展开" : "已打开: 底图列表收起";
+      }
+    }
+
+    function toggleBasePanelLock() {
+      basePanelLocked = !basePanelLocked;
+      refreshBasePanelLockUi();
+    }
+
+    function setBaseMode(mode) {
+      if (!mapInstance || !streetBaseLayer || !satelliteBaseLayer || !terrainBaseLayer) return;
+      if (mode === "satellite") activeBaseMode = "satellite";
+      else if (mode === "terrain") activeBaseMode = "terrain";
+      else activeBaseMode = "map";
+      if (mapInstance.hasLayer(streetBaseLayer)) mapInstance.removeLayer(streetBaseLayer);
+      if (mapInstance.hasLayer(satelliteBaseLayer)) mapInstance.removeLayer(satelliteBaseLayer);
+      if (mapInstance.hasLayer(terrainBaseLayer)) mapInstance.removeLayer(terrainBaseLayer);
+      if (activeBaseMode === "satellite") satelliteBaseLayer.addTo(mapInstance);
+      else if (activeBaseMode === "terrain") terrainBaseLayer.addTo(mapInstance);
+      else streetBaseLayer.addTo(mapInstance);
+      renderBaseMapControl();
+    }
+
+    function renderBaseMapControl() {
+      if (!baseMapBody) return;
+      baseMapBody.innerHTML = `
+        <div class="map-basemap-tabs">
+          <button type="button" class="map-basemap-tab ${activeBaseMode === "map" ? "active" : ""}" data-base="map">地图</button>
+          <button type="button" class="map-basemap-tab ${activeBaseMode === "satellite" ? "active" : ""}" data-base="satellite">卫星图像</button>
+          <button type="button" class="map-basemap-tab ${activeBaseMode === "terrain" ? "active" : ""}" data-base="terrain">地形</button>
+        </div>
+      `;
+      baseMapBody.querySelectorAll("[data-base]").forEach((btn) => {
+        btn.addEventListener("click", () => setBaseMode(btn.getAttribute("data-base")));
+      });
+      refreshBasePanelLockUi();
+    }
+
+    function pointOnSegment(pt, a, b) {
+      const x = pt[0];
+      const y = pt[1];
+      const x1 = a[0];
+      const y1 = a[1];
+      const x2 = b[0];
+      const y2 = b[1];
+      const eps = 1e-9;
+      const cross = (y - y1) * (x2 - x1) - (x - x1) * (y2 - y1);
+      if (Math.abs(cross) > eps) return false;
+      const dot = (x - x1) * (x2 - x1) + (y - y1) * (y2 - y1);
+      if (dot < -eps) return false;
+      const lenSq = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+      if (dot - lenSq > eps) return false;
+      return true;
+    }
+
+    function pointInRing(pt, ring) {
+      let inside = false;
+      if (!Array.isArray(ring) || ring.length < 4) return false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = Number(ring[i][0]);
+        const yi = Number(ring[i][1]);
+        const xj = Number(ring[j][0]);
+        const yj = Number(ring[j][1]);
+        if (!Number.isFinite(xi + yi + xj + yj)) continue;
+        if (pointOnSegment(pt, [xi, yi], [xj, yj])) return true;
+        const intersect = ((yi > pt[1]) !== (yj > pt[1])) &&
+          (pt[0] < (xj - xi) * (pt[1] - yi) / ((yj - yi) || 1e-16) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function geometryContainsPoint(geometry, lon, lat) {
+      if (!geometry) return false;
+      const type = geometry.type;
+      const c = geometry.coordinates;
+      const pt = [lon, lat];
+      if (type === "Point") {
+        if (!Array.isArray(c) || c.length < 2) return false;
+        return Math.abs(c[0] - lon) <= 1e-9 && Math.abs(c[1] - lat) <= 1e-9;
+      }
+      if (type === "MultiPoint") {
+        return Array.isArray(c) && c.some((p) => Array.isArray(p) && p.length >= 2 && Math.abs(p[0] - lon) <= 1e-9 && Math.abs(p[1] - lat) <= 1e-9);
+      }
+      if (type === "LineString") {
+        if (!Array.isArray(c) || c.length < 2) return false;
+        for (let i = 0; i < c.length - 1; i++) {
+          if (pointOnSegment(pt, c[i], c[i + 1])) return true;
+        }
+        return false;
+      }
+      if (type === "MultiLineString") {
+        return Array.isArray(c) && c.some((line) => {
+          if (!Array.isArray(line) || line.length < 2) return false;
+          for (let i = 0; i < line.length - 1; i++) {
+            if (pointOnSegment(pt, line[i], line[i + 1])) return true;
+          }
+          return false;
+        });
+      }
+      if (type === "Polygon") {
+        if (!Array.isArray(c) || c.length < 1) return false;
+        if (!pointInRing(pt, c[0])) return false;
+        for (let i = 1; i < c.length; i++) {
+          if (pointInRing(pt, c[i])) return false;
+        }
+        return true;
+      }
+      if (type === "MultiPolygon") {
+        return Array.isArray(c) && c.some((poly) => {
+          if (!Array.isArray(poly) || poly.length < 1) return false;
+          if (!pointInRing(pt, poly[0])) return false;
+          for (let i = 1; i < poly.length; i++) {
+            if (pointInRing(pt, poly[i])) return false;
+          }
+          return true;
+        });
+      }
+      return false;
+    }
+
+    async function ensureFactorOverlay(def) {
+      if (!activeJobId || !mapInstance || !def) return;
+      let state = factorOverlayCache.get(def.path);
+      if (!state) {
+        const summaryResp = await fetch(
+          "/jobs/" + activeJobId + "/artifact-raster/summary?artifact_path=" + encodeURIComponent(def.path)
+        );
+        if (!summaryResp.ok) throw new Error("factor summary unavailable");
+        const payload = await summaryResp.json();
+        const bounds = normalizeLeafletBounds(payload.summary && payload.summary.bounds);
+        if (!bounds) throw new Error("factor bounds invalid");
+        const previewUrl = (
+          payload.preview_url ||
+          ("/jobs/" + activeJobId + "/artifact-raster/preview.png?artifact_path=" + encodeURIComponent(def.path))
+        ) + "&max_size=980&colormap=viridis&t=" + Date.now();
+        const overlay = L.imageOverlay(previewUrl, bounds, {
+          opacity: Math.max(0, Math.min(1, Number(def.opacity || 70) / 100)),
+          zIndex: 12,
+        });
+        state = { overlay, bounds };
+        factorOverlayCache.set(def.path, state);
+      }
+
+      state.overlay.setOpacity(Math.max(0, Math.min(1, Number(def.opacity || 70) / 100)));
+      if (def.checked && !mapInstance.hasLayer(state.overlay)) {
+        state.overlay.addTo(mapInstance);
+      }
+      if (!def.checked && mapInstance.hasLayer(state.overlay)) {
+        mapInstance.removeLayer(state.overlay);
+      }
+      updateActiveOverlayBounds();
+    }
+
+    function applyVectorLayerStyle(layer, def) {
+      const alpha = Math.max(0.05, Math.min(1, Number(def.opacity || 80) / 100));
+      const color = def.kind === "research" ? "#53d8ff" : "#ffbf6b";
+      layer.eachLayer((item) => {
+        if (item.setStyle) {
+          item.setStyle({
+            color,
+            weight: def.kind === "research" ? 2.4 : 1.8,
+            opacity: alpha,
+            fillColor: color,
+            fillOpacity: def.kind === "research" ? alpha * 0.12 : alpha * 0.45,
+          });
+        }
+      });
+    }
+
+    async function ensureVectorOverlay(def) {
+      if (!activeJobId || !mapInstance || !def) return;
+      let state = vectorOverlayCache.get(def.path);
+      if (!state) {
+        const resp = await fetch(
+          "/jobs/" + activeJobId + "/artifact-vector/geojson?artifact_path=" + encodeURIComponent(def.path) + "&max_features=20000"
+        );
+        if (!resp.ok) throw new Error("vector geojson unavailable");
+        const payload = await resp.json();
+        const geojson = payload.geojson || { type: "FeatureCollection", features: [] };
+        const features = Array.isArray(geojson.features) ? geojson.features : [];
+        const layer = L.geoJSON(geojson, {
+          style: () => ({
+            color: def.kind === "research" ? "#53d8ff" : "#ffbf6b",
+            weight: def.kind === "research" ? 2.4 : 1.8,
+            opacity: Math.max(0.05, Math.min(1, Number(def.opacity || 80) / 100)),
+            fillOpacity: 0.15,
+          }),
+          pointToLayer: (_feature, latlng) => {
+            const alpha = Math.max(0.08, Math.min(1, Number(def.opacity || 80) / 100));
+            return L.circleMarker(latlng, {
+              radius: def.kind === "research" ? 3 : 4,
+              color: def.kind === "research" ? "#53d8ff" : "#ffbf6b",
+              weight: 1.2,
+              fillColor: def.kind === "research" ? "#53d8ff" : "#ffbf6b",
+              fillOpacity: alpha * 0.7,
+              opacity: alpha,
+            });
+          },
+        });
+        const b = layer.getBounds();
+        const bounds = b && b.isValid() ? [[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]] : null;
+        state = { layer, bounds, features };
+        vectorOverlayCache.set(def.path, state);
+      }
+
+      applyVectorLayerStyle(state.layer, def);
+      if (def.checked && !mapInstance.hasLayer(state.layer)) {
+        state.layer.addTo(mapInstance);
+        if (state.layer.bringToFront) state.layer.bringToFront();
+      }
+      if (!def.checked && mapInstance.hasLayer(state.layer)) {
+        mapInstance.removeLayer(state.layer);
+      }
+      updateActiveOverlayBounds();
+    }
+
+    async function syncCheckedFactorOverlays() {
+      const tasks = [];
+      factorLayerDefs
+        .filter((def) => def.checked)
+        .forEach((def) => tasks.push(ensureFactorOverlay(def).catch(() => null)));
+      if (tasks.length > 0) {
+        await Promise.all(tasks);
+        updateActiveOverlayBounds();
+      }
+    }
+
+    function syncResultOverlay() {
+      if (!mapInstance || !imageOverlay) return;
+      imageOverlay.setOpacity(Math.max(0, Math.min(1, Number(resultLayerOpacity || 85) / 100)));
+      if (resultLayerVisible) {
+        if (!mapInstance.hasLayer(imageOverlay)) imageOverlay.addTo(mapInstance);
+      } else if (mapInstance.hasLayer(imageOverlay)) {
+        mapInstance.removeLayer(imageOverlay);
+      }
+      updateActiveOverlayBounds();
+    }
+
+    function renderMapLayerControl() {
+      if (!mapLayerBody) return;
+
+      const factorRows = factorLayerDefs.length
+        ? factorLayerDefs
+          .map((def, idx) => `
+            <div class="map-layer-row" data-factor-index="${idx}">
+              <div class="map-layer-left">
+                <input class="map-layer-check" type="checkbox" data-factor-check="${idx}" ${def.checked ? "checked" : ""} />
+                <span class="map-layer-name" title="${def.label}">${def.label}</span>
+              </div>
+              <input class="map-layer-opacity" type="range" min="0" max="100" value="${def.opacity}" data-factor-opacity="${idx}" />
+            </div>
+          `)
+          .join("")
+        : '<div class="map-layer-row"><div class="map-layer-left"><span class="map-layer-name">暂无可叠加因子图</span></div><div></div></div>';
+
+      mapLayerBody.innerHTML = `
+        <div class="map-layer-row">
+          <div class="map-layer-left">
+            <input class="map-layer-check" type="checkbox" data-result-check ${resultLayerVisible ? "checked" : ""} />
+            <span class="map-layer-name">结果图</span>
+          </div>
+          <input class="map-layer-opacity" type="range" min="0" max="100" value="${resultLayerOpacity}" data-result-opacity />
+        </div>
+        <div class="map-layer-row section"><div>栅格图层</div></div>
+        ${factorRows}
+      `;
+
+      const resultCheck = mapLayerBody.querySelector("[data-result-check]");
+      if (resultCheck) {
+        resultCheck.addEventListener("change", () => {
+          resultLayerVisible = resultCheck.checked;
+          syncResultOverlay();
+          fitToVisibleOverlays();
+        });
+      }
+      const resultOpacity = mapLayerBody.querySelector("[data-result-opacity]");
+      if (resultOpacity) {
+        resultOpacity.addEventListener("input", () => {
+          resultLayerOpacity = Number(resultOpacity.value || 85);
+          syncResultOverlay();
+        });
+      }
+
+      factorLayerDefs.forEach((def, idx) => {
+        const checkEl = mapLayerBody.querySelector('[data-factor-check="' + idx + '"]');
+        const opacityEl = mapLayerBody.querySelector('[data-factor-opacity="' + idx + '"]');
+        if (checkEl) {
+          checkEl.addEventListener("change", async () => {
+            def.checked = !!checkEl.checked;
+            try {
+              await ensureFactorOverlay(def);
+              fitToVisibleOverlays();
+            } catch (_) {
+              def.checked = false;
+              checkEl.checked = false;
+            }
+          });
+        }
+        if (opacityEl) {
+          opacityEl.addEventListener("input", async () => {
+            def.opacity = Number(opacityEl.value || 70);
+            if (factorOverlayCache.has(def.path)) {
+              const state = factorOverlayCache.get(def.path);
+              state.overlay.setOpacity(Math.max(0, Math.min(1, def.opacity / 100)));
+            }
+            if (def.checked && !factorOverlayCache.has(def.path)) {
+              try {
+                await ensureFactorOverlay(def);
+              } catch (_) { }
+            }
+          });
+        }
+      });
+      refreshLayerPanelLockUi();
+    }
+
+    function rebuildFactorLayerDefs(items) {
+      const prev = new Map(factorLayerDefs.map((x) => [x.path, x]));
+      const tifItems = (items || [])
+        .filter((item) => /\.(tif|tiff)$/i.test(String(item)))
+        .filter((item) => {
+          const k = String(item).toLowerCase();
+          return !k.includes("/output/predict/") && !k.includes("probability.tif") && !k.includes("probability.tiff");
+        });
+
+      factorLayerDefs = tifItems.map((path) => {
+        const old = prev.get(path);
+        return {
+          path,
+          label: normalizeLayerLabel(path),
+          checked: old ? !!old.checked : false,
+          opacity: old ? Number(old.opacity || 70) : 70,
+        };
+      });
+
+      const alive = new Set(factorLayerDefs.map((x) => x.path));
+      for (const [path, state] of factorOverlayCache.entries()) {
+        if (alive.has(path)) continue;
+        if (mapInstance && state.overlay && mapInstance.hasLayer(state.overlay)) {
+          mapInstance.removeLayer(state.overlay);
+        }
+        factorOverlayCache.delete(path);
+      }
+      for (const [, state] of vectorOverlayCache.entries()) {
+        if (mapInstance && state.layer && mapInstance.hasLayer(state.layer)) {
+          mapInstance.removeLayer(state.layer);
+        }
+      }
+      vectorOverlayCache.clear();
+      vectorLayerDefs = [];
+
+      renderMapLayerControl();
+      updateActiveOverlayBounds();
+    }
+
+    function clearFactorOverlays() {
+      for (const [, state] of factorOverlayCache.entries()) {
+        if (mapInstance && state.overlay && mapInstance.hasLayer(state.overlay)) {
+          mapInstance.removeLayer(state.overlay);
+        }
+      }
+      for (const [, state] of vectorOverlayCache.entries()) {
+        if (mapInstance && state.layer && mapInstance.hasLayer(state.layer)) {
+          mapInstance.removeLayer(state.layer);
+        }
+      }
+      factorOverlayCache.clear();
+      vectorOverlayCache.clear();
+      factorLayerDefs = [];
+      vectorLayerDefs = [];
+      renderMapLayerControl();
+      updateActiveOverlayBounds();
+    }
+
+    function initMap() {
+      if (!mapInstance && els.map) {
+        streetBaseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 19,
+        });
+        satelliteBaseLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+          attribution: "Tiles &copy; Esri",
+          maxZoom: 19,
+        });
+        terrainBaseLayer = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+          attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap",
+          maxZoom: 17,
+        });
+
+        mapInstance = L.map("map", {
+          center: [0, 0],
+          zoom: 2,
+          layers: [streetBaseLayer],
+        });
+        activeBaseMode = "map";
+
+        L.control.scale({
+          position: "bottomleft",
+          metric: true,
+          imperial: false,
+          maxWidth: 120,
+        }).addTo(mapInstance);
+
+        mapLegendControl = L.control({ position: "bottomright" });
+        mapLegendControl.onAdd = function () {
+          const div = L.DomUtil.create("div", "map-legend");
+          L.DomEvent.disableClickPropagation(div);
+          mapLegendContainer = div;
+          updateMapLegend(null);
+          return div;
+        };
+        mapLegendControl.addTo(mapInstance);
+
+        mapLayerControl = L.control({ position: "topright" });
+        mapLayerControl.onAdd = function () {
+          const div = L.DomUtil.create("div", "map-layer-control");
+          L.DomEvent.disableClickPropagation(div);
+          mapLayerContainer = div;
+          div.innerHTML = `
+            <div class="map-layer-head">
+              <span class="map-layer-title"><span>图层</span></span>
+              <button type="button" class="map-panel-lock" data-layer-lock>🔒</button>
+            </div>
+            <div class="map-layer-body"></div>
+          `;
+          mapLayerBody = div.querySelector(".map-layer-body");
+          mapLayerLockBtn = div.querySelector("[data-layer-lock]");
+          if (mapLayerLockBtn) {
+            mapLayerLockBtn.addEventListener("click", () => toggleLayerPanelLock());
+          }
+          renderMapLayerControl();
+          refreshLayerPanelLockUi();
+          return div;
+        };
+        mapLayerControl.addTo(mapInstance);
+
+        baseMapControl = L.control({ position: "topright" });
+        baseMapControl.onAdd = function () {
+          const div = L.DomUtil.create("div", "map-basemap-control");
+          L.DomEvent.disableClickPropagation(div);
+          div.innerHTML = `
+            <div class="map-basemap-head">
+              <span>底图</span>
+              <button type="button" class="map-panel-lock" data-base-lock>🔓</button>
+            </div>
+            <div class="map-basemap-body"></div>
+          `;
+          baseMapContainer = div;
+          baseMapBody = div.querySelector(".map-basemap-body");
+          baseMapLockBtn = div.querySelector("[data-base-lock]");
+          if (baseMapLockBtn) {
+            baseMapLockBtn.addEventListener("click", () => toggleBasePanelLock());
+          }
+          renderBaseMapControl();
+          refreshBasePanelLockUi();
+          return div;
+        };
+        baseMapControl.addTo(mapInstance);
+
+      }
+    }
+
+    function normalizeLeafletBounds(rawBounds) {
+      if (!Array.isArray(rawBounds) || rawBounds.length !== 2) return null;
+      if (!Array.isArray(rawBounds[0]) || !Array.isArray(rawBounds[1])) return null;
+      if (rawBounds[0].length < 2 || rawBounds[1].length < 2) return null;
+
+      const sLat = Number(rawBounds[0][0]);
+      const sLon = Number(rawBounds[0][1]);
+      const nLat = Number(rawBounds[1][0]);
+      const nLon = Number(rawBounds[1][1]);
+      if (![sLat, sLon, nLat, nLon].every(Number.isFinite)) return null;
+
+      let south = Math.min(sLat, nLat);
+      let north = Math.max(sLat, nLat);
+      let west = Math.min(sLon, nLon);
+      let east = Math.max(sLon, nLon);
+
+      south = Math.max(-90, Math.min(90, south));
+      north = Math.max(-90, Math.min(90, north));
+      west = Math.max(-180, Math.min(180, west));
+      east = Math.max(-180, Math.min(180, east));
+
+      if (!(south < north && west < east)) return null;
+      return [[south, west], [north, east]];
+    }
+
+    function setMetricsEmpty(text) {
+      els.metricsBody.innerHTML = METRIC_ITEMS
+        .map((item) => "<tr><td>" + item[1] + " <span style='opacity:.65'>(" + item[0] + ")</span></td><td>-</td><td>-</td></tr>")
+        .join("");
+      els.metricsNote.textContent = text || "暂未检测到指标文件。";
+      [
+        [els.lossImg, els.lossHint, "暂无损失曲线图。"],
+        [els.rocImg, els.rocHint, "暂无 ROC 图。"],
+        [els.prImg, els.prHint, "暂无 PR 图。"],
+        [els.shapBarImg, els.shapBarHint, "暂无 SHAP 柱状图。"],
+        [els.shapImg, els.shapHint, "暂无 SHAP 汇总图。"],
+      ].forEach(([img, hint, msg]) => {
+        if (img && hint) {
+          img.style.display = "none";
+          img.removeAttribute("src");
+          hint.textContent = msg;
+        }
+      });
+    }
+
+    function findArtifactPath(items, candidates) {
+      const lowered = (items || []).map((x) => ({ raw: x, key: String(x).toLowerCase() }));
+      for (const token of candidates) {
+        const t = token.toLowerCase();
+        const hit = lowered.find((x) => x.key.includes(t));
+        if (hit) return hit.raw;
+      }
+      return null;
+    }
+
+    function findReportArtifactPath(items) {
+      return findArtifactPath(items || [], [
+        "output/report/auto_report.html",
+        "output/report/auto_report.md",
+        "report/auto_report.html",
+        "report/auto_report.md",
+      ]);
+    }
+
+    function refreshReportActions(reportPathOverride) {
+      const reportPath = reportPathOverride !== undefined
+        ? reportPathOverride
+        : findReportArtifactPath(activeArtifacts);
+      latestReportArtifactPath = reportPath || "";
+      const canGenerate = !!activeJobId && !!activeJob && String(activeJob.status) === "done";
+      if (els.generateReport) {
+        els.generateReport.disabled = !canGenerate;
+      }
+      if (els.openReport) {
+        if (latestReportArtifactPath && activeJobId) {
+          els.openReport.style.display = "inline-block";
+          els.openReport.href = artifactUrl(activeJobId, latestReportArtifactPath);
+        } else {
+          els.openReport.style.display = "none";
+          els.openReport.removeAttribute("href");
+        }
+      }
+    }
+
+    async function generateReportForActiveJob() {
+      if (!activeJobId || !activeJob) {
+        setLogs(["请先选择任务。"]);
+        return;
+      }
+      if (String(activeJob.status) !== "done") {
+        setLogs([`任务状态为 ${statusText(activeJob.status)}，仅已完成任务可生成报告。`]);
+        return;
+      }
+      if (els.generateReport) {
+        els.generateReport.disabled = true;
+        els.generateReport.textContent = "生成中...";
+      }
+      try {
+        const resp = await fetch("/jobs/" + activeJobId + "/report/generate", { method: "POST" });
+        if (!resp.ok) {
+          const text = await resp.text();
+          setLogs(["报告生成失败: " + text]);
+          return;
+        }
+        const payload = await resp.json();
+        const reportPath = payload.report_html_path || payload.report_md_path || "";
+        await refreshArtifacts();
+        refreshReportActions(reportPath || undefined);
+        if (payload.report_html_url) {
+          setLogs([
+            "标准报告生成成功。",
+            "Markdown: " + String(payload.report_md_path || "-"),
+            "HTML: " + String(payload.report_html_url || "-"),
+          ]);
+        } else {
+          setLogs(["标准报告生成成功: " + String(payload.report_md_path || "-")]);
+        }
+      } catch (err) {
+        setLogs(["报告生成请求失败: " + String(err)]);
+      } finally {
+        if (els.generateReport) {
+          els.generateReport.textContent = "一键生成标准报告";
+        }
+        refreshReportActions();
+      }
+    }
+
+    function fmtMetric(value, digits = 6) {
+      if (value === null || value === undefined) return "-";
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toFixed(digits) : "-";
+    }
+
+    function renderMetricsTable(metricsPayload) {
+      const valM = (metricsPayload && metricsPayload.validation_metrics) || {};
+      const testM = (metricsPayload && metricsPayload.test_metrics) || {};
+      const rows = [
+        ["accuracy", "准确率", valM.accuracy, testM.accuracy],
+        ["precision", "精确率", valM.precision, testM.precision],
+        ["recall", "召回率", valM.recall, testM.recall],
+        ["f1", "F1 分数", valM.f1, testM.f1],
+        ["balanced_accuracy", "平衡准确率", valM.balanced_accuracy, testM.balanced_accuracy],
+        ["mcc", "MCC", valM.mcc, testM.mcc],
+        ["roc_auc", "ROC-AUC", valM.roc_auc, testM.roc_auc],
+        ["pr_auc", "PR-AUC", valM.pr_auc, testM.pr_auc],
+      ];
+      els.metricsBody.innerHTML = rows
+        .map((r) => "<tr><td>" + r[1] + " <span style='opacity:.65'>(" + r[0] + ")</span></td><td>" + fmtMetric(r[2], 4) + "</td><td>" + fmtMetric(r[3], 4) + "</td></tr>")
+        .join("");
+      const bestAuc = metricsPayload ? metricsPayload.best_val_auc_during_training : null;
+      els.metricsNote.textContent = "训练期最佳验证 AUC: " + fmtMetric(bestAuc, 4);
+    }
+
+    function setMetricImage(imgEl, hintEl, artifactPath, emptyText) {
+      if (!artifactPath || !activeJobId) {
+        imgEl.style.display = "none";
+        imgEl.removeAttribute("src");
+        hintEl.textContent = emptyText;
+        return;
+      }
+      imgEl.src = artifactUrl(activeJobId, artifactPath) + "?t=" + Date.now();
+      imgEl.style.display = "block";
+      hintEl.textContent = "已加载: " + artifactPath.split("/").pop();
+    }
+
+    async function refreshMetricsPanel(items) {
+      if (!activeJobId) {
+        setMetricsEmpty("请先选择任务。");
+        return;
+      }
+      const list = items || [];
+      const metricsPath = findArtifactPath(list, ["metrics/metrics.json"]);
+      if (!metricsPath) {
+        setMetricsEmpty("产物中未找到 metrics.json。");
+      } else {
+        try {
+          const resp = await fetch(artifactUrl(activeJobId, metricsPath));
+          if (resp.ok) {
+            const payload = await resp.json();
+            renderMetricsTable(payload);
+          } else {
+            setMetricsEmpty("读取 metrics.json 失败。");
+          }
+        } catch (err) {
+          setMetricsEmpty("指标请求失败。");
+        }
+      }
+
+      const lossPath = findArtifactPath(list, ["figures/loss_curve.png", "loss_curve.png"]);
+      const rocPath = findArtifactPath(list, ["figures/roc_curve_test.png", "roc_curve_test.png"]);
+      const prPath = findArtifactPath(list, ["figures/pr_curve_test.png", "pr_curve_test.png"]);
+      const shapBarPath = findArtifactPath(list, ["explainability/shap_bar.png", "shap_bar.png"]);
+      const shapPath = findArtifactPath(list, ["explainability/shap_summary.png", "shap_summary.png"]);
+
+      setMetricImage(els.lossImg, els.lossHint, lossPath, "暂无损失曲线图。");
+      setMetricImage(els.rocImg, els.rocHint, rocPath, "暂无 ROC 图。");
+      setMetricImage(els.prImg, els.prHint, prPath, "暂无 PR 图。");
+      setMetricImage(els.shapBarImg, els.shapBarHint, shapBarPath, "暂无 SHAP 柱状图。");
+      setMetricImage(els.shapImg, els.shapHint, shapPath, "暂无 SHAP 汇总图。");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function algorithmText(value) {
+      const algo = String(value || "").toLowerCase();
+      const mapping = {
+        ginn: "地质约束神经网络（GINN）",
+        pinn: "地质约束神经网络（GINN）",
+        rf: "随机森林",
+        lightgbm: "LightGBM",
+        catboost: "CatBoost",
+        xgboost: "XGBoost",
+        mlp: "多层感知机",
+        gcn_transformer: "GCN-Transformer",
+        gnn: "图神经网络",
+        vae: "变分自编码器",
+        transunet: "TransUNet",
+      };
+      return mapping[algo] || (algo ? algo.toUpperCase() : "未知算法");
+    }
+
+    function algorithmLegendName(value) {
+      const algo = String(value || "").toLowerCase();
+      const mapping = {
+        ginn: "GINN",
+        pinn: "GINN",
+        rf: "RF",
+        lightgbm: "LightGBM",
+        catboost: "CatBoost",
+        xgboost: "XGBoost",
+        mlp: "MLP",
+        gcn_transformer: "GCN-Transformer",
+        gnn: "GNN",
+        vae: "VAE",
+        transunet: "TransUNet",
+      };
+      return mapping[algo] || (algo ? algo.toUpperCase() : "MODEL");
+    }
+
+    function resolveJobAlgorithm(job) {
+      const direct = String((job && job.algorithm) || "").toLowerCase();
+      if (direct) return direct;
+      const cache = compareDataCache.get(String((job && job.job_id) || ""));
+      return String((cache && cache.algorithm) || "").toLowerCase();
+    }
+
+    function resolveJobDisplayName(job) {
+      const custom = String((job && job.display_name) || "").trim();
+      if (custom) return custom;
+      const algo = algorithmText(resolveJobAlgorithm(job));
+      const created = formatCreatedAt(job && job.created_at);
+      if (created && created !== "-") {
+        return `${algo} 任务（${created}）`;
+      }
+      const shortId = String((job && job.job_id) || "").slice(0, 8).toUpperCase();
+      return `${algo} 任务（${shortId || "未命名"}）`;
+    }
+
+    function resolveCompareAlgo(row) {
+      const direct = String((row && row.algorithm) || "").toLowerCase();
+      if (direct) return direct;
+      const metricAlgo = String((row && row.metrics && row.metrics.algorithm) || "").toLowerCase();
+      return metricAlgo;
+    }
+
+    function buildCompareSeriesLabels(rows) {
+      const seen = {};
+      return (Array.isArray(rows) ? rows : []).map((row) => {
+        const base = algorithmLegendName(resolveCompareAlgo(row));
+        seen[base] = (seen[base] || 0) + 1;
+        return seen[base] > 1 ? `${base} ${seen[base]}` : base;
+      });
+    }
+
+    function compareJobTitle(result, idx = 0, rows = []) {
+      const labels = buildCompareSeriesLabels(rows);
+      return labels[idx] || algorithmLegendName(resolveCompareAlgo(result));
+    }
+
+    function resetCompareTable(text) {
+      const hint = text || "Select at least two completed jobs.";
+      els.compareMetricsHead.innerHTML = `<tr><th class="compare-metric-col">Metric</th></tr>`;
+      els.compareMetricsBody.innerHTML = `<tr><td class="compare-metric-col">${hint}</td></tr>`;
+      compareCurrentRows = [];
+      destroyCompareCharts();
+      if (els.compareFigureNote) els.compareFigureNote.textContent = hint;
+      if (els.compareNote) {
+        els.compareNote.textContent = hint;
+      }
+    }
+
+    function compareStatusText(status) {
+      if (status === "queued") return "Queued";
+      if (status === "running") return "Running";
+      if (status === "packaging") return "Packaging";
+      if (status === "done") return "Done";
+      if (status === "failed") return "Failed";
+      return status ? String(status) : "Unknown";
+    }
+
+    function rgbaColor(hex, alpha) {
+      const h = String(hex || "#000000").replace("#", "");
+      if (h.length !== 6) return `rgba(0,0,0,${alpha})`;
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function compareMetricSplitKey() {
+      return els.compareMetricSplit && els.compareMetricSplit.value === "validation"
+        ? "validation_metrics"
+        : "test_metrics";
+    }
+
+    function buildCompareMetricsBarConfig(compareRows, options = {}) {
+      const rows = Array.isArray(compareRows) ? compareRows : [];
+      const seriesLabels = buildCompareSeriesLabels(rows);
+      const split = compareMetricSplitKey();
+      const labels = COMPARE_METRIC_ITEMS.map(([key, label]) => (key === "balanced_accuracy" ? ["Balanced", "Accuracy"] : label));
+      const datasets = rows.map((row, idx) => {
+        const metrics = (row.metrics && row.metrics[split]) || {};
+        const base = JOURNAL_COLORS[idx % JOURNAL_COLORS.length];
+        return {
+          label: seriesLabels[idx] || compareJobTitle(row, idx, rows),
+          data: COMPARE_METRIC_ITEMS.map(([key]) => {
+            const n = Number(metrics[key]);
+            return Number.isFinite(n) ? n : null;
+          }),
+          backgroundColor: rgbaColor(base, 0.75),
+          borderColor: rgbaColor(base, 1),
+          borderWidth: 1,
+        };
+      });
+      const chartOptions = {
+        responsive: options.responsive !== false,
+        maintainAspectRatio: options.maintainAspectRatio === true,
+        scales: {
+          x: {
+            grid: { color: "#edf1f6" },
+            ticks: { maxRotation: 30, minRotation: 0, font: { family: "'Times New Roman', Times, serif", size: 12 } },
+          },
+          y: {
+            grid: { color: "#edf1f6" },
+            ticks: { font: { family: "'Times New Roman', Times, serif", size: 12 } },
+            title: { display: true, text: "Metric Value", font: { family: "'Times New Roman', Times, serif", size: 13 } },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { font: { family: "'Times New Roman', Times, serif", size: 10 }, boxWidth: 12, usePointStyle: true },
+          },
+          title: {
+            display: true,
+            text: `Model Metrics Bar Comparison (${split === "validation_metrics" ? "Validation Set" : "Test Set"})`,
+            font: { family: "'Times New Roman', Times, serif", size: 15, weight: "bold" },
+          },
+        },
+      };
+      if (options.animation === false) {
+        chartOptions.animation = false;
+      }
+      if (Number.isFinite(options.devicePixelRatio)) {
+        chartOptions.devicePixelRatio = Number(options.devicePixelRatio);
+      }
+      const configPlugins = [];
+      if (els.compareBarShowValues && els.compareBarShowValues.checked) {
+        configPlugins.push(createBarValueLabelPlugin(3));
+      }
+      return {
+        type: "bar",
+        data: { labels, datasets },
+        options: chartOptions,
+        plugins: configPlugins,
+      };
+    }
+
+    function createWhiteBackgroundPlugin() {
+      return {
+        id: "whiteBackgroundPlugin",
+        beforeDraw(chart) {
+          const chartCtx = chart.ctx;
+          chartCtx.save();
+          chartCtx.globalCompositeOperation = "destination-over";
+          chartCtx.fillStyle = "#ffffff";
+          chartCtx.fillRect(0, 0, chart.width, chart.height);
+          chartCtx.restore();
+        },
+      };
+    }
+
+    function createBarValueLabelPlugin(digits = 3) {
+      return {
+        id: "barValueLabelPlugin",
+        afterDatasetsDraw(chart) {
+          const { ctx, chartArea } = chart;
+          ctx.save();
+          ctx.font = "11px 'Times New Roman', Times, serif";
+          ctx.fillStyle = "#1d2430";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (!meta || meta.hidden) return;
+            meta.data.forEach((element, pointIndex) => {
+              const raw = dataset.data[pointIndex];
+              const value = Number(raw);
+              if (!Number.isFinite(value)) return;
+              const pos = element.tooltipPosition();
+              const y = Math.max(chartArea.top + 12, pos.y - 4);
+              ctx.fillText(value.toFixed(digits), pos.x, y);
+            });
+          });
+          ctx.restore();
+        },
+      };
+    }
+
+    async function downloadCompareMetricsBarPng600Dpi() {
+      if (!window.Chart) {
+        if (els.compareNote) els.compareNote.textContent = "Chart.js is unavailable, export failed.";
+        return;
+      }
+      const rows = Array.isArray(compareCurrentRows) ? compareCurrentRows : [];
+      if (rows.length === 0) {
+        if (els.compareNote) els.compareNote.textContent = "No comparison data available for export.";
+        return;
+      }
+      const cssWidth = Math.round(COMPARE_BAR_EXPORT.widthIn * COMPARE_BAR_EXPORT.cssPpi);
+      const cssHeight = Math.round(COMPARE_BAR_EXPORT.heightIn * COMPARE_BAR_EXPORT.cssPpi);
+      const dpr = COMPARE_BAR_EXPORT.dpi / COMPARE_BAR_EXPORT.cssPpi;
+      const canvas = document.createElement("canvas");
+      canvas.width = cssWidth;
+      canvas.height = cssHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        if (els.compareNote) els.compareNote.textContent = "Unable to create export canvas.";
+        return;
+      }
+      const config = buildCompareMetricsBarConfig(rows, {
+        responsive: false,
+        maintainAspectRatio: false,
+        animation: false,
+        devicePixelRatio: dpr,
+      });
+      config.plugins = [
+        ...(Array.isArray(config.plugins) ? config.plugins : []),
+        createWhiteBackgroundPlugin(),
+      ];
+      const chart = new Chart(ctx, config);
+      try {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!blob) {
+          if (els.compareNote) els.compareNote.textContent = "PNG export failed.";
+          return;
+        }
+        const splitLabel = compareMetricSplitKey() === "validation_metrics" ? "validation" : "test";
+        const filename = `metrics_bar_${splitLabel}_7inx4p5in_600dpi.png`;
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+        if (els.compareNote) {
+          els.compareNote.textContent = "600 DPI PNG downloaded (journal size: 7.0in x 4.5in).";
+        }
+      } finally {
+        chart.destroy();
+      }
+    }
+
+    function buildCompareRocDatasets(compareRows) {
+      const rows = Array.isArray(compareRows) ? compareRows : [];
+      const seriesLabels = buildCompareSeriesLabels(rows);
+      const rocDatasets = rows
+        .map((row, idx) => ({ row, idx }))
+        .filter((item) => Array.isArray(item.row.roc_points) && item.row.roc_points.length > 1)
+        .map((item) => {
+          const color = JOURNAL_COLORS[item.idx % JOURNAL_COLORS.length];
+          const auc = (item.row.metrics && item.row.metrics.test_metrics && item.row.metrics.test_metrics.roc_auc) || null;
+          return {
+            label: `${seriesLabels[item.idx] || compareJobTitle(item.row, item.idx, rows)} (AUC=${fmtMetric(auc, 3)})`,
+            data: item.row.roc_points,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0,
+          };
+        });
+      rocDatasets.push({
+        label: "Random Baseline",
+        data: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
+        borderColor: "#5a5a5a",
+        borderWidth: 1.2,
+        pointRadius: 0,
+        borderDash: [6, 5],
+        tension: 0,
+      });
+      return rocDatasets;
+    }
+
+    function buildComparePrDatasets(compareRows) {
+      const rows = Array.isArray(compareRows) ? compareRows : [];
+      const seriesLabels = buildCompareSeriesLabels(rows);
+      return rows
+        .map((row, idx) => ({ row, idx }))
+        .filter((item) => Array.isArray(item.row.pr_points) && item.row.pr_points.length > 1)
+        .map((item) => {
+          const color = JOURNAL_COLORS[item.idx % JOURNAL_COLORS.length];
+          const ap = (item.row.metrics && item.row.metrics.test_metrics && item.row.metrics.test_metrics.pr_auc) || null;
+          return {
+            label: `${seriesLabels[item.idx] || compareJobTitle(item.row, item.idx, rows)} (AP=${fmtMetric(ap, 3)})`,
+            data: item.row.pr_points,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0,
+          };
+        });
+    }
+
+    function buildCompareRocConfig(compareRows, options = {}) {
+      const datasets = buildCompareRocDatasets(compareRows);
+      const chartOptions = {
+        responsive: options.responsive !== false,
+        maintainAspectRatio: options.maintainAspectRatio === true,
+        parsing: false,
+        scales: {
+          x: {
+            type: "linear",
+            min: 0,
+            max: 1,
+            title: { display: true, text: "False Positive Rate", font: { family: "'Times New Roman', Times, serif", size: 13 } },
+            ticks: { font: { family: "'Times New Roman', Times, serif", size: 12 } },
+            grid: { color: "#edf1f6" },
+          },
+          y: {
+            min: 0,
+            max: 1,
+            title: { display: true, text: "True Positive Rate", font: { family: "'Times New Roman', Times, serif", size: 13 } },
+            ticks: { font: { family: "'Times New Roman', Times, serif", size: 12 } },
+            grid: { color: "#edf1f6" },
+          },
+        },
+        plugins: {
+          legend: { position: "bottom", labels: { font: { family: "'Times New Roman', Times, serif", size: 10 }, usePointStyle: true } },
+          title: {
+            display: true,
+            text: "ROC Comparison Across Models",
+            font: { family: "'Times New Roman', Times, serif", size: 15, weight: "bold" },
+          },
+        },
+      };
+      if (options.animation === false) {
+        chartOptions.animation = false;
+      }
+      if (Number.isFinite(options.devicePixelRatio)) {
+        chartOptions.devicePixelRatio = Number(options.devicePixelRatio);
+      }
+      return {
+        type: "line",
+        data: { datasets },
+        options: chartOptions,
+      };
+    }
+
+    function buildComparePrConfig(compareRows, options = {}) {
+      const datasets = buildComparePrDatasets(compareRows);
+      const chartOptions = {
+        responsive: options.responsive !== false,
+        maintainAspectRatio: options.maintainAspectRatio === true,
+        parsing: false,
+        scales: {
+          x: {
+            type: "linear",
+            min: 0,
+            max: 1,
+            title: { display: true, text: "Recall", font: { family: "'Times New Roman', Times, serif", size: 13 } },
+            ticks: { font: { family: "'Times New Roman', Times, serif", size: 12 } },
+            grid: { color: "#edf1f6" },
+          },
+          y: {
+            min: 0,
+            max: 1,
+            title: { display: true, text: "Precision", font: { family: "'Times New Roman', Times, serif", size: 13 } },
+            ticks: { font: { family: "'Times New Roman', Times, serif", size: 12 } },
+            grid: { color: "#edf1f6" },
+          },
+        },
+        plugins: {
+          legend: { position: "bottom", labels: { font: { family: "'Times New Roman', Times, serif", size: 10 }, usePointStyle: true } },
+          title: {
+            display: true,
+            text: "PR Comparison Across Models",
+            font: { family: "'Times New Roman', Times, serif", size: 15, weight: "bold" },
+          },
+        },
+      };
+      if (options.animation === false) {
+        chartOptions.animation = false;
+      }
+      if (Number.isFinite(options.devicePixelRatio)) {
+        chartOptions.devicePixelRatio = Number(options.devicePixelRatio);
+      }
+      return {
+        type: "line",
+        data: { datasets },
+        options: chartOptions,
+      };
+    }
+
+    async function downloadCompareCurvePng600Dpi(kind) {
+      if (!window.Chart) {
+        if (els.compareNote) els.compareNote.textContent = "Chart.js is unavailable, export failed.";
+        return;
+      }
+      const rows = Array.isArray(compareCurrentRows) ? compareCurrentRows : [];
+      if (rows.length === 0) {
+        if (els.compareNote) els.compareNote.textContent = "No comparison data available for export.";
+        return;
+      }
+      const isRoc = kind === "roc";
+      const config = isRoc
+        ? buildCompareRocConfig(rows, { responsive: false, maintainAspectRatio: false, animation: false, devicePixelRatio: COMPARE_CURVE_EXPORT.dpi / COMPARE_CURVE_EXPORT.cssPpi })
+        : buildComparePrConfig(rows, { responsive: false, maintainAspectRatio: false, animation: false, devicePixelRatio: COMPARE_CURVE_EXPORT.dpi / COMPARE_CURVE_EXPORT.cssPpi });
+      const datasetCount = Array.isArray(config.data && config.data.datasets) ? config.data.datasets.length : 0;
+      if ((isRoc && datasetCount <= 1) || (!isRoc && datasetCount <= 0)) {
+        if (els.compareNote) els.compareNote.textContent = `${isRoc ? "ROC" : "PR"} curve data is not available for export.`;
+        return;
+      }
+      const cssWidth = Math.round(COMPARE_CURVE_EXPORT.widthIn * COMPARE_CURVE_EXPORT.cssPpi);
+      const cssHeight = Math.round(COMPARE_CURVE_EXPORT.heightIn * COMPARE_CURVE_EXPORT.cssPpi);
+      const canvas = document.createElement("canvas");
+      canvas.width = cssWidth;
+      canvas.height = cssHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        if (els.compareNote) els.compareNote.textContent = "Unable to create export canvas.";
+        return;
+      }
+      config.plugins = [createWhiteBackgroundPlugin()];
+      const chart = new Chart(ctx, config);
+      try {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!blob) {
+          if (els.compareNote) els.compareNote.textContent = "PNG export failed.";
+          return;
+        }
+        const filename = `${isRoc ? "roc" : "pr"}_overlay_5inx5in_600dpi.png`;
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+        if (els.compareNote) {
+          els.compareNote.textContent = `${isRoc ? "ROC" : "PR"} 600 DPI PNG downloaded (journal size: 5.0in x 5.0in).`;
+        }
+      } finally {
+        chart.destroy();
+      }
+    }
+
+    function parseSimpleCsv(text) {
+      const lines = String(text || "")
+        .split(/\r?\n/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (lines.length < 2) return [];
+      const headers = lines[0]
+        .replace(/^\uFEFF/, "")
+        .split(",")
+        .map((x) => x.trim());
+      const rows = [];
+      for (let i = 1; i < lines.length; i += 1) {
+        const cols = lines[i].split(",");
+        const row = {};
+        headers.forEach((h, idx) => {
+          row[h] = (cols[idx] || "").trim();
+        });
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function parseCurvePoints(csvText, xKey, yKey) {
+      return parseSimpleCsv(csvText)
+        .map((row) => ({ x: Number(row[xKey]), y: Number(row[yKey]) }))
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+        .sort((a, b) => a.x - b.x);
+    }
+
+    function destroyCompareCharts() {
+      if (compareRocChart) {
+        compareRocChart.destroy();
+        compareRocChart = null;
+      }
+      if (comparePrChart) {
+        comparePrChart.destroy();
+        comparePrChart = null;
+      }
+      if (compareMetricsBarChart) {
+        compareMetricsBarChart.destroy();
+        compareMetricsBarChart = null;
+      }
+    }
+
+    function renderCompareJobList() {
+      if (!els.compareJobList) return;
+      const list = Array.isArray(unifiedJobs) ? unifiedJobs : [];
+      const doneSet = new Set(
+        list
+          .filter((job) => String(job.status) === "done")
+          .map((job) => String(job.job_id))
+      );
+      Array.from(compareSelectedJobIds).forEach((id) => {
+        if (!doneSet.has(String(id))) compareSelectedJobIds.delete(String(id));
+      });
+
+      if (list.length === 0) {
+        els.compareJobList.innerHTML = '<div class="hint">No comparable jobs yet.</div>';
+        if (els.compareMeta) els.compareMeta.textContent = "No job selected";
+        return;
+      }
+
+      els.compareJobList.innerHTML = list
+        .map((job) => {
+          const jobId = String(job.job_id || "");
+          const done = String(job.status) === "done";
+          const checked = compareSelectedJobIds.has(jobId) ? "checked" : "";
+          const disabled = done ? "" : "disabled";
+          const cached = compareDataCache.get(jobId);
+          const algoText = cached && cached.algorithm ? algorithmLegendName(cached.algorithm) : algorithmLegendName(resolveJobAlgorithm(job));
+          const title = `${algoText} Job`;
+          return `
+            <label class="compare-job-item">
+              <input type="checkbox" data-compare-job="${escapeHtml(jobId)}" ${checked} ${disabled} />
+              <div class="compare-job-main">
+                <div class="compare-job-name">${escapeHtml(title)}</div>
+                <div class="compare-job-sub">Status: ${escapeHtml(compareStatusText(job.status))} | ID: ${escapeHtml(jobId.slice(0, 10).toUpperCase())}</div>
+              </div>
+              <div class="compare-job-algo">${escapeHtml(algoText)}</div>
+            </label>
+          `;
+        })
+        .join("");
+
+      els.compareJobList.querySelectorAll("[data-compare-job]").forEach((node) => {
+        node.addEventListener("change", async () => {
+          const id = String(node.getAttribute("data-compare-job") || "");
+          if (!id) return;
+          if (node.checked) compareSelectedJobIds.add(id);
+          else compareSelectedJobIds.delete(id);
+          await refreshComparePanel();
+        });
+      });
+
+      if (els.compareMeta) {
+        els.compareMeta.textContent = `${compareSelectedJobIds.size} selected`;
+      }
+    }
+
+    async function loadCompareJobData(jobId, force = false) {
+      const cacheKey = String(jobId || "");
+      if (!cacheKey) return null;
+      if (!force && compareDataCache.has(cacheKey)) {
+        return compareDataCache.get(cacheKey);
+      }
+      const result = {
+        job_id: cacheKey,
+        algorithm: "",
+        model_name: "",
+        display_name: "",
+        metrics: null,
+        roc_path: "",
+        pr_path: "",
+        roc_curve_csv: "",
+        pr_curve_csv: "",
+        roc_points: [],
+        pr_points: [],
+        error: "",
+      };
+      try {
+        const sourceJob = unifiedJobs.find((job) => String(job.job_id || "") === cacheKey) || null;
+        if (sourceJob) {
+          result.algorithm = String(sourceJob.algorithm || "");
+          result.model_name = String(sourceJob.model_name || "");
+          result.display_name = String(sourceJob.display_name || resolveJobDisplayName(sourceJob));
+        }
+        const resp = await fetch("/jobs/" + cacheKey + "/artifacts");
+        if (!resp.ok) {
+          result.error = "Failed to load artifacts";
+          compareDataCache.set(cacheKey, result);
+          return result;
+        }
+        const payload = await resp.json();
+        const artifacts = payload.artifacts || [];
+        const metricsPath = findArtifactPath(artifacts, ["metrics/metrics.json"]);
+        if (metricsPath) {
+          try {
+            const metricsResp = await fetch(artifactUrl(cacheKey, metricsPath));
+            if (metricsResp.ok) {
+              result.metrics = await metricsResp.json();
+              result.algorithm = String((result.metrics && result.metrics.algorithm) || "");
+            } else {
+              result.error = "Failed to read metrics.json";
+            }
+          } catch (err) {
+            result.error = "metrics.json request failed";
+          }
+        } else {
+          result.error = "metrics.json not found";
+        }
+        result.roc_path = findArtifactPath(artifacts, ["figures/roc_curve_test.png", "roc_curve_test.png"]) || "";
+        result.pr_path = findArtifactPath(artifacts, ["figures/pr_curve_test.png", "pr_curve_test.png"]) || "";
+        result.roc_curve_csv = findArtifactPath(artifacts, ["metrics/roc_curve_test.csv", "roc_curve_test.csv"]) || "";
+        result.pr_curve_csv = findArtifactPath(artifacts, ["metrics/pr_curve_test.csv", "pr_curve_test.csv"]) || "";
+        if (result.roc_curve_csv) {
+          try {
+            const rocResp = await fetch(artifactUrl(cacheKey, result.roc_curve_csv));
+            if (rocResp.ok) {
+              const rocText = await rocResp.text();
+              result.roc_points = parseCurvePoints(rocText, "fpr", "tpr");
+            }
+          } catch (err) {
+            result.error = result.error || "Failed to read ROC curve CSV";
+          }
+        }
+        if (result.pr_curve_csv) {
+          try {
+            const prResp = await fetch(artifactUrl(cacheKey, result.pr_curve_csv));
+            if (prResp.ok) {
+              const prText = await prResp.text();
+              result.pr_points = parseCurvePoints(prText, "recall", "precision");
+            }
+          } catch (err) {
+            result.error = result.error || "Failed to read PR curve CSV";
+          }
+        }
+      } catch (err) {
+        result.error = "Comparison request failed";
+      }
+      compareDataCache.set(cacheKey, result);
+      return result;
+    }
+
+    function renderCompareMetricsTable(compareRows) {
+      if (!els.compareMetricsHead || !els.compareMetricsBody) return;
+      if (!Array.isArray(compareRows) || compareRows.length === 0) {
+        els.compareMetricsHead.innerHTML = `<tr><th class="compare-metric-col">Metric</th></tr>`;
+        els.compareMetricsBody.innerHTML = `<tr><td class="compare-metric-col">Select at least two completed jobs.</td></tr>`;
+        return;
+      }
+
+      const seriesLabels = buildCompareSeriesLabels(compareRows);
+      const headCells = ['<tr><th class="compare-metric-col">Metric</th>'];
+      compareRows.forEach((row, idx) => {
+        const title = escapeHtml(seriesLabels[idx] || compareJobTitle(row, idx, compareRows));
+        headCells.push(`<th>${title}<br><span style="opacity:.7;">Validation</span></th>`);
+        headCells.push(`<th>${title}<br><span style="opacity:.7;">Test</span></th>`);
+      });
+      headCells.push("</tr>");
+      els.compareMetricsHead.innerHTML = headCells.join("");
+
+      els.compareMetricsBody.innerHTML = COMPARE_METRIC_ITEMS.map(([key, label]) => {
+        const cells = compareRows.map((row) => {
+          const valMetrics = (row.metrics && row.metrics.validation_metrics) || {};
+          const testMetrics = (row.metrics && row.metrics.test_metrics) || {};
+          const val = fmtMetric(valMetrics[key], 4);
+          const test = fmtMetric(testMetrics[key], 4);
+          return `<td>${val}</td><td>${test}</td>`;
+        }).join("");
+        return `<tr><td class="compare-metric-col">${escapeHtml(label)} <span style="opacity:.65">(${escapeHtml(key)})</span></td>${cells}</tr>`;
+      }).join("");
+    }
+
+    function renderCompareMetricsBar(compareRows) {
+      if (!window.Chart || !els.compareMetricsBarCanvas) return;
+      const rows = Array.isArray(compareRows) ? compareRows : [];
+      if (rows.length === 0) return;
+      if (compareMetricsBarChart) compareMetricsBarChart.destroy();
+      const config = buildCompareMetricsBarConfig(rows, {
+        responsive: true,
+        maintainAspectRatio: false,
+      });
+      compareMetricsBarChart = new Chart(els.compareMetricsBarCanvas.getContext("2d"), config);
+    }
+
+    function renderCompareMergedCurves(compareRows) {
+      if (!window.Chart || !els.compareRocCanvas || !els.comparePrCanvas) {
+        if (els.compareFigureNote) els.compareFigureNote.textContent = "Chart.js 未加载，无法渲染合并曲线图。";
+        return;
+      }
+      const rows = Array.isArray(compareRows) ? compareRows : [];
+      const rocConfig = buildCompareRocConfig(rows, {
+        responsive: true,
+        maintainAspectRatio: false,
+      });
+      const prConfig = buildComparePrConfig(rows, {
+        responsive: true,
+        maintainAspectRatio: false,
+      });
+
+      if (compareRocChart) compareRocChart.destroy();
+      compareRocChart = new Chart(els.compareRocCanvas.getContext("2d"), rocConfig);
+
+      if (comparePrChart) comparePrChart.destroy();
+      comparePrChart = new Chart(els.comparePrCanvas.getContext("2d"), prConfig);
+
+      const rocAvailable = Array.isArray(rocConfig.data && rocConfig.data.datasets) && rocConfig.data.datasets.length > 1;
+      const prAvailable = Array.isArray(prConfig.data && prConfig.data.datasets) && prConfig.data.datasets.length > 0;
+      if (els.compareFigureNote) {
+        if (rocAvailable && prAvailable) {
+          els.compareFigureNote.textContent = "已生成单图叠加对比（Times New Roman 字体，期刊风格配色）。";
+        } else {
+          els.compareFigureNote.textContent = "部分任务缺少曲线CSV（roc_curve_test.csv / pr_curve_test.csv），仅显示可用模型。";
+        }
+      }
+    }
+
+    async function refreshComparePanel(options = {}) {
+      renderCompareJobList();
+      const force = options.force === true;
+      const selected = unifiedJobs
+        .map((job) => String(job.job_id || ""))
+        .filter((id) => compareSelectedJobIds.has(id));
+
+      if (els.compareMeta) {
+        els.compareMeta.textContent = `已选择 ${selected.length} 个任务`;
+      }
+      if (selected.length < 2) {
+        resetCompareTable("请选择至少 2 个已完成任务进行对比。");
+        return;
+      }
+      if (els.compareNote) {
+        els.compareNote.textContent = "正在加载对比数据...";
+      }
+      const rows = await Promise.all(selected.map((id) => loadCompareJobData(id, force)));
+      compareCurrentRows = rows;
+      renderCompareMetricsTable(rows);
+      renderCompareMetricsBar(rows);
+      renderCompareMergedCurves(rows);
+
+      const failed = rows.filter((row) => row && row.error).length;
+      if (els.compareNote) {
+        if (failed > 0) {
+          els.compareNote.textContent = `已完成对比，其中 ${failed} 个任务存在产物缺失或读取失败。`;
+        } else {
+          els.compareNote.textContent = `已完成 ${rows.length} 个任务的 metrics / ROC / PR 对比。`;
+        }
+      }
+    }
+
+    async function selectAllDoneJobsForCompare() {
+      compareSelectedJobIds.clear();
+      unifiedJobs.forEach((job) => {
+        if (String(job.status) === "done") {
+          compareSelectedJobIds.add(String(job.job_id || ""));
+        }
+      });
+      await refreshComparePanel();
+    }
+
+    async function clearCompareSelection() {
+      compareSelectedJobIds.clear();
+      await refreshComparePanel();
+    }
+
+    function statusClass(status) {
+      if (status === "running" || status === "packaging" || status === "queued") return "status-running";
+      if (status === "done") return "status-done";
+      if (status === "failed") return "status-failed";
+      return "";
+    }
+
+    function statusText(status) {
+      if (status === "queued") return "排队中";
+      if (status === "running") return "运行中";
+      if (status === "packaging") return "打包中";
+      if (status === "done") return "已完成";
+      if (status === "failed") return "失败";
+      if (!status) return "未知";
+      return String(status);
+    }
+
+    function typeText(type) {
+      const t = String(type || "");
+      if (t.includes("upload-unified")) return "上传统一流程";
+      if (t.includes("unified")) return "统一流程";
+      if (t.includes("full")) return "全流程";
+      return t || "-";
+    }
+
+    function formatCreatedAt(text) {
+      if (!text) return "-";
+      return String(text).replace("T", " ");
+    }
+
+    function renderJobHistory(jobs) {
+      const list = Array.isArray(jobs) ? jobs : [];
+      const runningCount = list.filter((j) => ["queued", "running", "packaging"].includes(String(j.status))).length;
+      const doneCount = list.filter((j) => String(j.status) === "done").length;
+      if (els.historyMeta) {
+        els.historyMeta.textContent = `${list.length} 个任务 | 运行中 ${runningCount} | 已完成 ${doneCount}`;
+      }
+
+      if (!els.jobs) return;
+      if (list.length === 0) {
+        els.jobs.innerHTML = '<div class="hint">暂无统一流程任务。</div>';
+        return;
+      }
+
+      els.jobs.innerHTML = list
+        .map((job) => {
+          const cls = statusClass(job.status);
+          const activeCls = job.job_id === activeJobId ? " active" : "";
+          const title = resolveJobDisplayName(job);
+          const shortId = String(job.job_id || "").slice(0, 10).toUpperCase();
+          const algo = algorithmText(resolveJobAlgorithm(job));
+          const modelName = String(job.model_name || "-");
+          return `
+            <div class="job-item${activeCls}" data-job-id="${job.job_id}">
+              <div class="job-head">
+                <div class="job-id">${escapeHtml(title)}</div>
+                <div class="job-status-badge ${cls}">${statusText(job.status)}</div>
+              </div>
+              <div class="job-meta">算法: ${escapeHtml(algo)} | 模型: ${escapeHtml(modelName)}</div>
+              <div class="job-meta">类型: ${typeText(job.type)}</div>
+              <div class="job-meta">创建时间: ${formatCreatedAt(job.created_at)} | ID: ${shortId}</div>
+            </div>
+          `;
+        })
+        .join("");
+
+      els.jobs.querySelectorAll(".job-item").forEach((node) => {
+        node.addEventListener("click", () => {
+          const id = node.getAttribute("data-job-id");
+          if (id) selectJob(id);
+        });
+      });
+    }
+
+    function setJobState(job) {
+      activeJob = job || null;
+      if (!job) {
+        els.pillJob.textContent = "任务: -";
+        els.pillType.textContent = "类型: -";
+        els.pillStatus.textContent = "状态: 空闲";
+        els.pillStatus.className = "pill";
+        els.kpiJob.textContent = "-";
+        els.kpiStatus.textContent = "空闲";
+        els.kpiType.textContent = "类型: -";
+        els.download.style.display = "none";
+        latestReportArtifactPath = "";
+        refreshReportActions(null);
+        clearFactorOverlays();
+        setPreviewEmpty("暂无预测结果。");
+        setMetricsEmpty("暂未检测到指标文件。");
+        return;
+      }
+
+      const title = resolveJobDisplayName(job);
+      const algo = algorithmText(resolveJobAlgorithm(job));
+      els.pillJob.textContent = "任务: " + title;
+      els.pillType.textContent = "类型: " + typeText(job.type);
+      els.pillStatus.textContent = "状态: " + statusText(job.status);
+      els.pillStatus.className = "pill " + statusClass(job.status);
+      els.kpiJob.textContent = algo;
+      els.kpiStatus.textContent = statusText(job.status);
+      els.kpiType.textContent = "任务: " + title;
+
+      if (job.status === "done") {
+        els.download.style.display = "inline-block";
+        els.download.href = "/jobs/" + job.job_id + "/result";
+      } else {
+        els.download.style.display = "none";
+      }
+      refreshReportActions();
+    }
+
+    function artifactUrl(jobId, path) {
+      return "/jobs/" + jobId + "/artifacts/" + path.split("/").map(encodeURIComponent).join("/");
+    }
+
+    function artifactDisplayInfo(path) {
+      const raw = String(path || "");
+      const key = raw.replace(/\\/g, "/").toLowerCase();
+      const file = raw.split("/").pop() || raw;
+      const modelFile = /models\/.+\.(pth|joblib)$/i.test(key);
+      const items = [
+        ["metrics/metrics.json", "模型评估指标（JSON）"],
+        ["metrics/train_history.csv", "训练过程历史（CSV）"],
+        ["metrics/classification_report.txt", "分类报告（文本）"],
+        ["metrics/model_parameters.json", "模型参数摘要"],
+        ["metrics/library_versions.json", "环境依赖版本"],
+        ["metrics/run_config.json", "任务配置快照"],
+        ["metrics/roc_curve_test.csv", "ROC 曲线数据（CSV）"],
+        ["metrics/pr_curve_test.csv", "PR 曲线数据（CSV）"],
+        ["figures/loss_curve.png", "训练损失曲线图"],
+        ["figures/roc_curve_test.png", "测试集 ROC 曲线图"],
+        ["figures/pr_curve_test.png", "测试集 PR 曲线图"],
+        ["explainability/shap_summary.png", "SHAP 汇总图"],
+        ["explainability/shap_bar.png", "SHAP 特征重要性柱状图"],
+        ["explainability/shap_feature_importance.csv", "SHAP 特征重要性数据"],
+        ["output/report/auto_report.md", "标准实验报告（Markdown，中英双语）"],
+        ["output/report/auto_report.html", "标准实验报告（HTML，中英双语）"],
+        ["models/preproc.joblib", "特征预处理器"],
+        ["output/predict/probability.tif", "预测概率栅格（GeoTIFF）"],
+      ];
+      for (const [token, label] of items) {
+        if (key.includes(token)) return { title: label, sub: raw };
+      }
+      if (modelFile) return { title: "训练模型文件", sub: raw };
+      if (key.endsWith(".tif") || key.endsWith(".tiff")) return { title: "栅格数据（GeoTIFF）", sub: raw };
+      if (key.endsWith(".png") || key.endsWith(".jpg") || key.endsWith(".jpeg")) return { title: "图像结果文件", sub: raw };
+      if (key.endsWith(".json")) return { title: "配置/结果 JSON 文件", sub: raw };
+      if (key.endsWith(".csv")) return { title: "数据表文件（CSV）", sub: raw };
+      return { title: file, sub: raw };
+    }
+
+    async function refreshArtifacts() {
+      if (!activeJobId) {
+        els.artifacts.innerHTML = '<div class="hint">请先选择任务。</div>';
+        activeArtifacts = [];
+        latestReportArtifactPath = "";
+        rebuildFactorLayerDefs([]);
+        setMetricsEmpty("请先选择任务。");
+        refreshReportActions(null);
+        return;
+      }
+      compareDataCache.delete(String(activeJobId));
+      try {
+        const resp = await fetch("/jobs/" + activeJobId + "/artifacts");
+        if (!resp.ok) {
+          els.artifacts.innerHTML = '<div class="hint">读取任务产物失败。</div>';
+          activeArtifacts = [];
+          latestReportArtifactPath = "";
+          rebuildFactorLayerDefs([]);
+          setMetricsEmpty("读取任务产物失败。");
+          refreshReportActions(null);
+          return;
+        }
+        const data = await resp.json();
+        const items = data.artifacts || [];
+        activeArtifacts = items;
+        rebuildFactorLayerDefs(items);
+        if (items.length === 0) {
+          els.artifacts.innerHTML = '<div class="hint">当前任务暂无产物。</div>';
+          setMetricsEmpty("当前任务暂无产物。");
+          refreshReportActions(null);
+          return;
+        }
+        els.artifacts.innerHTML = items
+          .map((item) => {
+            const ext = item.split(".").pop().toLowerCase();
+            const info = artifactDisplayInfo(item);
+            let icon = '<svg class="artifact-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
+            if (["png", "jpg", "jpeg", "tif", "tiff"].includes(ext)) {
+              icon = '<svg class="artifact-icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+            } else if (["json", "csv"].includes(ext)) {
+              icon = '<svg class="artifact-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>';
+            }
+            return '<a class="artifact-item" target="_blank" href="' + artifactUrl(activeJobId, item) + '"><span>' + icon + '</span><span class="artifact-meta"><span class="artifact-title">' + escapeHtml(info.title) + '</span><span class="artifact-sub">' + escapeHtml(info.sub) + '</span></span></a>';
+          })
+          .join("");
+        await refreshMetricsPanel(items);
+        refreshReportActions();
+      } catch (err) {
+        els.artifacts.innerHTML = '<div class="hint">产物请求失败。</div>';
+        activeArtifacts = [];
+        latestReportArtifactPath = "";
+        rebuildFactorLayerDefs([]);
+        setMetricsEmpty("产物请求失败。");
+        refreshReportActions(null);
+      }
+    }
+
+    function renderPreviewSummary(summary) {
+      const fmt = (v, digits = 6) => (v === null || v === undefined ? "-" : Number(v).toFixed(digits));
+      const lines = [
+        "栅格尺寸: " + summary.width + " x " + summary.height,
+        "有效像元: " + summary.valid_pixels + " / " + summary.total_pixels,
+        "有效比例: " + (Number(summary.valid_ratio || 0) * 100).toFixed(2) + "%",
+        "最小概率: " + fmt(summary.min_probability),
+        "最大概率: " + fmt(summary.max_probability),
+        "平均概率: " + fmt(summary.mean_probability),
+        "坐标系: " + (summary.crs || "-"),
+      ];
+      els.previewMeta.textContent = lines.join("\n");
+      els.kpiPreview.textContent = "已就绪";
+    }
+
+    async function refreshPrediction(job) {
+      if (!activeJobId) {
+        setPreviewEmpty("暂无预测结果。");
+        return;
+      }
+      const resolved = job || activeJob || {};
+      const type = String(resolved.type || "");
+      const isUnified = type.includes("unified") || type.includes("full");
+      if (!isUnified) {
+        setPreviewEmpty("当前任务不属于统一流程。");
+        return;
+      }
+      if (resolved.status && resolved.status !== "done") {
+        setPreviewEmpty("任务完成后可查看预测结果。");
+        return;
+      }
+      try {
+        const resp = await fetch("/jobs/" + activeJobId + "/prediction/summary");
+        if (!resp.ok) {
+          setPreviewEmpty("未找到预测概率栅格。");
+          return;
+        }
+        const data = await resp.json();
+        const summary = data.summary || {};
+        renderPreviewSummary(summary);
+        updateMapLegend(summary);
+
+        const previewUrl = data.preview_url + "?max_size=980&colormap=turbo&t=" + Date.now();
+        const bounds = normalizeLeafletBounds(summary.bounds);
+
+        if (bounds) {
+          els.previewImg.style.display = "none";
+          els.map.style.display = "block";
+          initMap();
+          if (imageOverlay) {
+            mapInstance.removeLayer(imageOverlay);
+          }
+          imageOverlay = L.imageOverlay(previewUrl, bounds, {
+            opacity: Math.max(0, Math.min(1, Number(resultLayerOpacity || 85) / 100)),
+            zIndex: 20,
+          });
+          resultOverlayBounds = bounds;
+          syncResultOverlay();
+          requestAnimationFrame(() => {
+            if (mapInstance) {
+              mapInstance.invalidateSize(true);
+              fitToVisibleOverlays();
+            }
+          });
+        } else {
+          updateMapLegend(null);
+          if (els.map) els.map.style.display = "none";
+          if (mapInstance && imageOverlay) {
+            mapInstance.removeLayer(imageOverlay);
+          }
+          imageOverlay = null;
+          resultOverlayBounds = null;
+          activeOverlayBounds = null;
+          els.previewImg.src = previewUrl;
+          els.previewImg.style.display = "block";
+        }
+        renderMapLayerControl();
+        if (bounds) {
+          await syncCheckedFactorOverlays();
+          fitToVisibleOverlays();
+        }
+      } catch (err) {
+        setPreviewEmpty("预测结果请求失败。");
+      }
+    }
+
+    async function fetchJob(jobId) {
+      const resp = await fetch("/jobs/" + jobId);
+      if (!resp.ok) return null;
+      return resp.json();
+    }
+
+    async function pollActiveJob() {
+      if (!activeJobId) return;
+      try {
+        const job = await fetchJob(activeJobId);
+        if (!job) return;
+        setJobState(job);
+        setLogs(job.logs || []);
+        refreshPrediction(job);
+        if (job.status === "done" || job.status === "failed") {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          refreshArtifacts();
+          refreshPrediction(job);
+          refreshJobs();
+        }
+      } catch (err) {
+        els.pillStatus.textContent = "状态: 请求异常";
+      }
+    }
+
+    function startPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollActiveJob, 3000);
+      pollActiveJob();
+    }
+
+    async function selectJob(jobId) {
+      activeJobId = jobId;
+      activeArtifacts = [];
+      latestReportArtifactPath = "";
+      refreshReportActions(null);
+      renderJobHistory(unifiedJobs);
+      clearFactorOverlays();
+      setPreviewEmpty("正在加载任务结果...");
+      const job = await fetchJob(jobId);
+      if (!job) return;
+      setJobState(job);
+      setLogs(job.logs || []);
+      refreshArtifacts();
+      refreshPrediction(job);
+      if (job.status !== "done" && job.status !== "failed") {
+        startPolling();
+      } else if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    async function refreshJobs(options = {}) {
+      const autoSelect = options.autoSelect !== false;
+      try {
+        const resp = await fetch(API.listJobs);
+        if (!resp.ok) {
+          if (els.jobs) els.jobs.innerHTML = '<div class="hint">读取任务历史失败。</div>';
+          renderCompareJobList();
+          return;
+        }
+        const data = await resp.json();
+        unifiedJobs = (data.jobs || []).filter((j) => {
+          const t = String(j.type || "");
+          return t.includes("unified") || t.includes("full");
+        });
+        renderJobHistory(unifiedJobs);
+        renderCompareJobList();
+
+        if (unifiedJobs.length === 0) {
+          activeJobId = null;
+          compareSelectedJobIds.clear();
+          compareDataCache.clear();
+          setJobState(null);
+          setLogs(["系统已就绪，请先提交统一任务。"]);
+          resetCompareTable("暂无可对比任务。");
+          return;
+        }
+
+        const activeExists = !!activeJobId && unifiedJobs.some((j) => j.job_id === activeJobId);
+        if (!activeExists && autoSelect) {
+          await selectJob(unifiedJobs[0].job_id);
+        }
+        const compareTab = document.getElementById("tab-compare");
+        if (compareTab && compareTab.classList.contains("active")) {
+          await refreshComparePanel();
+        }
+      } catch (err) {
+        if (els.jobs) els.jobs.innerHTML = '<div class="hint">任务历史请求失败。</div>';
+        renderCompareJobList();
+      }
+    }
+
+    async function selectLatestJob() {
+      if (!unifiedJobs || unifiedJobs.length === 0) {
+        await refreshJobs();
+        return;
+      }
+      await selectJob(unifiedJobs[0].job_id);
+    }
+
+    function buildUnifiedFormData() {
+      const fd = new FormData();
+      fd.append("factors_zip", document.getElementById("factors_zip").files[0]);
+      fd.append("samples_zip", document.getElementById("samples_zip").files[0]);
+      fd.append("research_zip", document.getElementById("research_zip").files[0]);
+      fd.append("priors_zip", document.getElementById("priors_zip").files[0]);
+
+      fd.append("use_dome", boolStr(document.getElementById("use_dome").value));
+      fd.append("use_fault", boolStr(document.getElementById("use_fault").value));
+      fd.append("use_strata", boolStr(document.getElementById("use_strata").value));
+      fd.append("use_singularity", boolStr(document.getElementById("use_singularity").value));
+
+      fd.append("dome_pattern", document.getElementById("dome_pattern").value.trim());
+      fd.append("fault_pattern", document.getElementById("fault_pattern").value.trim());
+      fd.append("strata_pattern", document.getElementById("strata_pattern").value.trim());
+      fd.append("singularity_pattern", document.getElementById("singularity_pattern").value.trim());
+      fd.append("label_col", document.getElementById("label_col").value.trim());
+
+      fd.append("epochs", document.getElementById("epochs").value.trim());
+      fd.append("patience", document.getElementById("patience").value.trim());
+      fd.append("model_name", document.getElementById("model_name").value.trim());
+      fd.append("algorithm", document.getElementById("algorithm").value);
+      fd.append("optimizer", document.getElementById("optimizer").value);
+      fd.append("bayes_trials", document.getElementById("bayes_trials").value.trim());
+      fd.append("disable_shap", boolStr(document.getElementById("disable_shap").value));
+
+      fd.append("predict_batch_size", document.getElementById("predict_batch_size").value.trim());
+      const out = document.getElementById("predict_output_tif").value.trim();
+      if (out) fd.append("predict_output_tif", out);
+      return fd;
+    }
+
+    async function submitUnifiedTask(event) {
+      event.preventDefault();
+      refreshPriorKpi();
+      const algo = document.getElementById("algorithm").value;
+      if (["ginn", "pinn"].includes(algo) && enabledPriorCount() < 1) {
+        setLogs(["提交失败：GINN请至少启用一个地质先验；论文配置使用dome、fault和strata，singularity仅为兼容项。"]);
+        return;
+      }
+      setLogs(["正在提交统一任务..."]);
+      setPreviewEmpty("正在等待预测输出。");
+
+      try {
+        const resp = await fetch(API.submitUnified, { method: "POST", body: buildUnifiedFormData() });
+        if (!resp.ok) {
+          setLogs(["提交失败: " + await resp.text()]);
+          return;
+        }
+        const data = await resp.json();
+        activeJobId = data.job_id;
+        activeArtifacts = [];
+        latestReportArtifactPath = "";
+        refreshReportActions(null);
+        setJobState({ job_id: activeJobId, type: "upload-unified", status: "queued" });
+        setLogs(["任务已入队，开始轮询状态..."]);
+        els.artifacts.innerHTML = '<div class="hint">当前任务暂无产物。</div>';
+        startPolling();
+        refreshJobs();
+      } catch (err) {
+        setLogs(["提交异常: " + String(err)]);
+      }
+    }
+
+    els.form.addEventListener("submit", submitUnifiedTask);
+    if (els.refreshJobs) {
+      els.refreshJobs.addEventListener("click", () => refreshJobs());
+    }
+    if (els.selectLatest) {
+      els.selectLatest.addEventListener("click", selectLatestJob);
+    }
+    if (els.generateReport) {
+      els.generateReport.addEventListener("click", generateReportForActiveJob);
+    }
+    els.refreshFiles.addEventListener("click", refreshArtifacts);
+    if (els.compareRefresh) {
+      els.compareRefresh.addEventListener("click", () => refreshComparePanel({ force: true }));
+    }
+    if (els.compareSelectDone) {
+      els.compareSelectDone.addEventListener("click", selectAllDoneJobsForCompare);
+    }
+    if (els.compareClear) {
+      els.compareClear.addEventListener("click", clearCompareSelection);
+    }
+    if (els.compareMetricSplit) {
+      els.compareMetricSplit.addEventListener("change", () => {
+        renderCompareMetricsBar(compareCurrentRows);
+      });
+    }
+    if (els.compareBarShowValues) {
+      els.compareBarShowValues.addEventListener("change", () => {
+        renderCompareMetricsBar(compareCurrentRows);
+      });
+    }
+    if (els.compareBarDownload) {
+      els.compareBarDownload.addEventListener("click", downloadCompareMetricsBarPng600Dpi);
+    }
+    if (els.compareRocDownload) {
+      els.compareRocDownload.addEventListener("click", () => downloadCompareCurvePng600Dpi("roc"));
+    }
+    if (els.comparePrDownload) {
+      els.comparePrDownload.addEventListener("click", () => downloadCompareCurvePng600Dpi("pr"));
+    }
+
+    setJobState(null);
+    refreshReportActions(null);
+    refreshJobs();
+  </script>
+</body>
+
+</html>

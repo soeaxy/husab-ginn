@@ -1,0 +1,23 @@
+name: Code-only publication boundary
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  publication-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify tracked code and reachable history
+        run: |
+          python scripts/check_public_release.py
+          python scripts/check_public_release.py --all-history
+          python -m unittest tests.test_public_release -v
