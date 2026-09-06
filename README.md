@@ -15,8 +15,8 @@ New command-line and API requests may use `--algorithm ginn`.
 
 ## What this repository implements
 
-- portable reconstruction of the 20 m positive-candidate grid and deterministic
-  10% positive draw;
+- portable reconstruction of the 20 m positive-candidate grid from pre-delineated
+  target polygons and deterministic 10% positive draw;
 - ten spatially balanced pseudo-absence realizations;
 - one fixed 5 × 5 spatial-block benchmark shared by seven models;
 - GINN, an architecture-matched MLP, an inductive local GCN–Transformer, Random
@@ -38,7 +38,7 @@ the claim-to-code crosswalk and interpretation limits.
 
 | Item | Archived setting |
 | --- | --- |
-| Positive candidates | 20 m × 20 m grid; 41,980 polygon-contained cells |
+| Positive candidates | 20 m × 20 m grid; 41,980 cells within target polygons |
 | Positive draw | 4,198 cells (`floor(41980 / 10)`), no replacement, `random_state=1` |
 | Pseudo-absences | 41,980 per realization; 10 deterministic realizations |
 | Negative strata | 70% hard, 5% transition, 25% background |
@@ -49,8 +49,22 @@ the claim-to-code crosswalk and interpretation limits.
 | Supplementary work | 76 additional real-data runs, with repeat axes kept separate |
 
 Dataset-specific counts are verified facts, not generic assertions enforced on
-other study areas. The authoritative geological provenance of the mapped
-deposit and prior-source geometries remains an author/data-owner action.
+other study areas. The original delineation criteria and positional accuracy of
+the target and prior-source geometries are not documented. Positive
+labels here are polygon-membership points, not independent assay-grade ore
+evidence.
+
+Pre-delineated target polygons are used as a label source. Within the Husab
+protocol, `Z1` and `Z2` are operating known targets; other polygon names are
+retained only as provided and are not asserted here as confirmed independent
+deposits.
+
+## Input scaling and preprocessing
+
+Inputs were normalized to `[0,1]` as part of the provided pre-model raster
+preparation for this study. The training stage then applies train-only
+preprocessing (`SimpleImputer` + variance filter + `StandardScaler`) and reuses
+fitted transforms for held-out sets.
 
 ## Repository layout
 

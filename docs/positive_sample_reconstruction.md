@@ -3,6 +3,10 @@
 `rebuild_positive_samples.py` reproduces the positive-label chain described in
 the revised manuscript without project-specific absolute paths.
 
+Inputs are expected to be pre-delineated target polygons, and the output positives
+are polygon-membership cells rather than independently verified mineralized ore
+bodies.
+
 ## Reconstructed rule
 
 1. Read a polygonal study area and use its minimum x/y bounds as the grid
@@ -11,8 +15,8 @@ the revised manuscript without project-specific absolute paths.
    the outer loop and y as the inner loop.
 3. Retain only points **strictly within** the study-area union. Boundary points
    are not retained.
-4. Retain points **strictly within** the mapped known-deposit polygon union and
-   assign `Class=1`. Polygon-boundary points are not positive candidates.
+4. Retain points **strictly within** the supplied target-polygon union and assign
+   `Class=1`. Polygon-boundary points are not positive candidates.
 5. Set the draw size to `floor(candidate_count / 10)` and call pandas
    `sample(n=..., random_state=1, replace=False)` on the combined ordered
    candidate table.
@@ -21,8 +25,9 @@ the revised manuscript without project-specific absolute paths.
    boundary.
 
 This is a polygon-membership label, not an assay-grade or drill-intersection
-label. The script does not infer the geological authority or status of the
-input polygons.
+label. In the archived Husab protocol, `Z1` and `Z2` represent the operating
+known targets; other polygon identities are retained from the input and are not
+asserted here as confirmed deposits.
 
 ## Command
 

@@ -31,7 +31,7 @@ the current regression and real-artifact audits.
 
 | Manuscript claim | Code implementation | Verification boundary |
 | --- | --- | --- |
-| 20 m × 20 m positive grid anchored at the study minimum bounds | `rebuild_positive_samples.build_positive_candidates` | Strictly within study and mapped deposit polygons; x outer/y inner ordering |
+| 20 m × 20 m positive grid anchored at the study minimum bounds | `rebuild_positive_samples.build_positive_candidates` | Strictly within study and pre-delineated target polygons; x outer/y inner ordering |
 | 41,980 candidates; 4,198 sampled positives; `random_state=1` | `rebuild_positive_samples.sample_positive_candidates` | Counts and the coordinate set are verified; row order/new IDs are not claimed as historical identifiers; generic code uses `floor(n/10)` without hard-coding counts |
 | Tailings exclusion after the positive draw | `sample_positive_candidates` | Uses `intersects`, so boundary points are also excluded |
 | Ten pseudo-absence realizations | `rebuild_negative_samples.SamplingConfig` | Seeds are 2025 + 1009 × realization index |
@@ -69,9 +69,11 @@ pseudo-absence protocol.
 
 The positive labels are polygon-membership cells, not independent deposits,
 assay thresholds or drill intersections. The pooled 697-cell polygon diagnostic
-is descriptive and heterogeneous, not external validation. Original polygon and
-prior-digitization provenance, controlled-data permission and independent
-geological validation remain unresolved outside the executable code.
+is descriptive and heterogeneous, not external validation. For the current
+study, `Z1` and `Z2` are identified as operating known targets; the confirmation
+status of other polygons is not established by this labeling rule. Original
+delineation details and independent geological validation remain unavailable.
+Controlled data are not authorized for public release.
 
 ## Code-publication boundary
 

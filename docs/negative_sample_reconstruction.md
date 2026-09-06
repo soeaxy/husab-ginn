@@ -2,7 +2,14 @@
 
 ## Why this module exists
 
-The archived Husab training sample set uses negatives that are spatially easy to separate from positives. This module rebuilds pseudo-absence samples so that negatives remain outside known ore zones but re-enter structurally and lithologically favorable settings as hard negatives.
+The archived Husab training sample set uses negatives that are spatially easy to
+separate from positives. This module rebuilds pseudo-absence samples so that
+negatives remain outside known target zones but re-enter structurally and
+lithologically favorable settings as hard negatives.
+
+Input positives are inherited from the reconstructed positive samples and remain
+polygon-membership labels (for example pre-delineated target polygons used in the
+positive-construction step).
 
 ## Core protocol
 
@@ -115,7 +122,10 @@ To swap one rebuilt realization into the current training pipeline, point `train
   --spatial-block-grid 5
 ```
 
-The current loader only requires a valid shapefile with a `Class` field and point geometry, so the rebuilt samples are backward-compatible.
+The current loader only requires a valid shapefile with a `Class` field and point
+geometry, so the rebuilt samples are backward-compatible. The negative-chain
+builder does not re-define the positive polygon meaning; it consumes the imported
+positive set.
 
 The supplied one-epoch run under `analysis_output/negative_sample_reconstruction/training_smoke` is compatibility evidence only. It must not be reported as manuscript performance. Final comparative experiments should repeat training across the ten realizations and multiple model seeds.
 
